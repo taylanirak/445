@@ -16,8 +16,6 @@ All three components emit a continuous score in [1, 5] for every fold
 """
 from __future__ import annotations
 
-import itertools
-
 import numpy as np
 
 from .data import write_predictions_jsonl
@@ -25,30 +23,33 @@ from .metrics import spearman
 from .nli_scorer import Calibrator
 
 
-def _weight_grid(step: float = 0.1):
-    """All convex 3-component weights on a ``step`` grid (sum = 1)."""
-    pts = np.round(np.arange(0.0, 1.0 + 1e-9, step), 4)
-    for wa, wb in itertools.product(pts, pts):
-        wc = round(1.0 - wa - wb, 4)
-        if -1e-9 <= wc <= 1.0 + 1e-9:
-            yield (float(wa), float(wb), max(0.0, wc))
+#: Small, *coarse* convex-weight candidate set. A 66-point grid overfits the
+#: ~276-row homonym-disjoint hold-out (the grid-optimal blend was empirically
+#: worse on dev than the best single component). A handful of robust mixtures —
+#: the one-hots, a few B/C blends that drop the weak NLI prior, and an equal
+#: triple — cannot overfit a 276-row signal yet still capture a genuine
+#: complementary gain when one exists.
+_WEIGHT_CANDIDATES = (
+    (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0),  # solo
+    (0.0, 0.5, 0.5), (0.0, 0.6, 0.4), (0.0, 0.4, 0.6),  # B/C only (drop A)
+    (0.0, 0.7, 0.3), (0.0, 0.3, 0.7),
+    (0.2, 0.4, 0.4),                                     # small A prior
+    (1 / 3, 1 / 3, 1 / 3),                               # equal triple
+)
 
 
 def search_weights(
     holdout_preds: dict, holdout_avg, margin: float = 0.01
 ) -> tuple[float, float, float]:
-    """Pick a convex ``(w_A,w_B,w_C)`` that robustly maximises hold-out Spearman.
+    """Pick a convex ``(w_A,w_B,w_C)`` that *robustly* maximises hold-out ρ.
 
-    The hold-out is small (~276 homonym-disjoint rows) and the 66-point convex
-    grid overfits it easily — empirically the grid-optimal blend has been
-    *worse* on dev than the single best component. Two guards:
-
-    1. **No-worse-than-best-single.** Compute each component's solo hold-out ρ;
-       only trust a blend if it beats the best single component by ``margin``,
-       otherwise fall back to that component's one-hot weight.
-    2. **Top-K stabilisation.** Average the 5 best grid weight vectors instead
-       of taking the single argmax; if that averaged blend does not itself
-       clear the margin, fall back to the best single component as well.
+    Instead of a fine grid (which overfits the tiny homonym-disjoint hold-out
+    and produced a blend worse on dev than the best single component), we
+    evaluate only the coarse :data:`_WEIGHT_CANDIDATES` set and keep the
+    no-worse-than-best-single guard: the chosen mixture is adopted only if it
+    beats the best single component's hold-out ρ by ``margin``; otherwise the
+    system falls back to that single component. Both the candidate set and the
+    guard make the selection insensitive to 276-row hold-out noise.
     """
     a, b, c = holdout_preds["A"], holdout_preds["B"], holdout_preds["C"]
     singles = {
@@ -59,33 +60,17 @@ def search_weights(
     best_single_w = max(singles, key=singles.get)
     best_single_rho = singles[best_single_w]
 
-    scored = []
-    best_w, best_rho = (1 / 3, 1 / 3, 1 / 3), -2.0
-    for wa, wb, wc in _weight_grid():
+    best_w, best_rho = best_single_w, -2.0
+    for wa, wb, wc in _WEIGHT_CANDIDATES:
         rho = spearman(wa * a + wb * b + wc * c, holdout_avg)
-        scored.append(((wa, wb, wc), rho))
         if rho > best_rho:
             best_rho, best_w = rho, (wa, wb, wc)
 
-    # Guard 1: the best blend must clear the best single component.
+    # Guard: a mixture must clear the best single component by a real margin,
+    # otherwise the single component is the more reliable choice.
     if best_rho < best_single_rho + margin:
         return best_single_w
-
-    # Guard 2: stabilise by averaging the top-5 weight vectors, but only keep it
-    # if it still clears the margin (averaging weights does not preserve the
-    # maximisation); otherwise fall back to the best single component.
-    scored.sort(key=lambda x: x[1], reverse=True)
-    topk = np.array([w for w, _ in scored[:5]], dtype=float)
-    avg_w = topk.mean(axis=0)
-    avg_w = avg_w / avg_w.sum()
-    avg_rho = spearman(
-        avg_w[0] * a + avg_w[1] * b + avg_w[2] * c, holdout_avg
-    )
-    if avg_rho >= best_single_rho + margin:
-        return (float(avg_w[0]), float(avg_w[1]), float(avg_w[2]))
-    if best_rho >= best_single_rho + margin:
-        return best_w
-    return best_single_w
+    return best_w
 
 
 def uncertainty_gate(preds: dict, var_C, w):
