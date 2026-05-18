@@ -77,6 +77,7 @@ class _DistHead:
             nn.Dropout(0.1), nn.Linear(cfg.hidden_size, n_out)
         )
         self.module = nn.ModuleDict({"b": self.backbone, "h": self.head})
+        self.module.float()  # fp32 master weights; autocast handles mixed prec.
 
     def logits(self, **batch):
         out = self.backbone(

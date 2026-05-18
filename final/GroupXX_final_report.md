@@ -102,8 +102,8 @@ The story is the **premise**; the candidate sense becomes a **hypothesis**
 paraphrase). We read the model's entailment/contradiction probabilities and
 take `s = P(entailment) − P(contradiction)`, then map `s` to [1,5] with an
 **isotonic** calibrator fit on the hold-out (a linear calibrator is kept for the
-ablation). Checkpoint: `MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli` on GPU,
-`facebook/bart-large-mnli` as the CPU fallback. NLI knowledge is
+ablation). Checkpoint: `facebook/bart-large-mnli` on GPU, the lighter
+`MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli` as the CPU fallback. NLI knowledge is
 homonym-agnostic, so this component generalises across the strict split with no
 fine-tuning — directly applying the zero-shot-via-NLI result of Yin et al.
 

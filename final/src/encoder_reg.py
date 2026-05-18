@@ -61,14 +61,21 @@ def amp_tools(use_amp: bool):
 
     import torch
 
-    scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
+    if not use_amp:
+        return (lambda: contextlib.nullcontext()), \
+            torch.amp.GradScaler("cuda", enabled=False)
+
+    # Prefer bf16 on capable GPUs (e.g. A100): full fp32 exponent range means
+    # NO gradient scaler is needed, which sidesteps the "unscale FP16 gradients"
+    # failure entirely and is faster/more stable. Fall back to fp16 + scaler on
+    # older GPUs (params are forced fp32 in the model, so unscale is valid).
+    bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+    dtype = torch.bfloat16 if bf16 else torch.float16
 
     def autocast():
-        if use_amp:
-            return torch.amp.autocast("cuda", dtype=torch.float16)
-        return contextlib.nullcontext()
+        return torch.amp.autocast("cuda", dtype=dtype)
 
-    return autocast, scaler
+    return autocast, torch.amp.GradScaler("cuda", enabled=not bf16)
 
 
 @dataclass
@@ -169,6 +176,9 @@ class _Regressor:
         hidden = cfg.hidden_size
         self.head = nn.Sequential(nn.Dropout(0.1), nn.Linear(hidden, 1))
         self.module = nn.ModuleDict({"b": self.backbone, "h": self.head})
+        # Keep master weights in fp32 (some checkpoints load as fp16 under newer
+        # transformers); mixed precision is applied via autocast at compute time.
+        self.module.float()
 
     def forward(self, **batch):
         # First token ([CLS]/<s>) representation as the pooled summary.

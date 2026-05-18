@@ -33,7 +33,8 @@ import numpy as np
 #   PRIMARY  — strong, used on GPU (the canonical / graded configuration).
 #   FALLBACK — small & fast 3-class MNLI head, used on the CPU path so the
 #              training-free component stays tractable without a GPU.
-PRIMARY_MODEL = "MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli"
+# GPU path: a strong, always-available zero-shot NLI checkpoint.
+PRIMARY_MODEL = "facebook/bart-large-mnli"
 # CPU path: a strong but CPU-inference-feasible MNLI head (~184M). Far better
 # than a distil-MNLI model, and NLI here is inference-only (low RAM, no grads).
 FALLBACK_MODEL = "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli"
