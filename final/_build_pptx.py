@@ -19,7 +19,7 @@ sys.path.insert(0, str(FINAL))
 from src.report_fill import build_token_map  # noqa: E402
 
 FIG = FINAL / "figures"
-OUT = FINAL / "GroupXX_final_presentation.pptx"
+OUT = FINAL / "Group24_final_presentation.pptx"
 T = build_token_map()
 
 prs = Presentation()
@@ -28,7 +28,7 @@ prs.slide_height = Inches(7.5)
 BLANK = prs.slide_layouts[6]
 NAVY = RGBColor(0x0B, 0x3D, 0x91)
 GREY = RGBColor(0x44, 0x44, 0x44)
-TOTAL = 16
+TOTAL = 17
 
 
 def slide():
@@ -63,7 +63,7 @@ def title_bar(s, t):
 def footer(s, n):
     text(s, 11.6, 7.0, 1.6, 0.3, f"{n} / {TOTAL}", size=10, color=GREY,
          align=PP_ALIGN.RIGHT)
-    text(s, 0.4, 7.0, 7, 0.3, "GroupXX — SemEval-2026 Task 5 (Final)",
+    text(s, 0.4, 7.0, 7, 0.3, "Group 24 — SemEval-2026 Task 5 (Final)",
          size=10, color=GREY)
 
 
@@ -91,7 +91,7 @@ text(s, 0.5, 2.0, 12.3, 1.3,
 text(s, 0.5, 3.3, 12.3, 0.7,
      "through Narrative Understanding — SemEval-2026 Task 5 · Final",
      size=20, italic=True, color=GREY, align=PP_ALIGN.CENTER)
-text(s, 0.5, 4.4, 12.3, 0.5, "GroupXX — Member 1 · Member 2 · Member 3",
+text(s, 0.5, 4.4, 12.3, 0.5, "Group 24 — Taylan İrak",
      size=18, bold=True, color=GREY, align=PP_ALIGN.CENTER)
 text(s, 0.5, 5.1, 12.3, 0.5,
      f"3-component ensemble · dev acc@std {T['ENS_ACC']} / ρ {T['ENS_RHO']} "
@@ -170,11 +170,11 @@ s = slide()
 title_bar(s, "System: a 3-component calibrated ensemble")
 text(s, 0.5, 1.3, 12.3, 3.6, [
     "A · Zero-shot NLI (no training): story ⊨ \"<homonym> means <gloss>\"  → calibrate",
-    "B · Gloss-informed encoder regressor: DeBERTa-v3-large, MSE on human mean",
+    "B · Gloss-informed regressor: DeBERTa-v3-large, mean-pool, MSE + rank-aligned loss",
     "C · NOVEL Likert-distribution head: predict 5-vote distribution, read E[k] + variance",
     "",
-    "Ensemble: convex weights tuned on the homonym-disjoint hold-out + isotonic",
-    f"   tuned weights  A {T['W_A']} · B {T['W_B']} · C {T['W_C']}",
+    "Ensemble: coarse weight candidates on the homonym-disjoint hold-out + isotonic,",
+    f"   guarded by no-worse-than-best-single   (weights A {T['W_A']} · B {T['W_B']} · C {T['W_C']})",
 ], size=17)
 text(s, 0.5, 5.3, 12.3, 0.9,
      "Open-source HuggingFace models only — no API, fully reproducible.",
@@ -191,7 +191,8 @@ text(s, 0.5, 1.2, 12.3, 3.4, [
     "• premise = full story;  hypothesis = 'In this story, \"<homonym>\" means <gloss>.'",
     "• signal s = P(entail) − P(contradiction), 2 templates averaged",
     "• calibrate s → [1,5] with isotonic regression on the hold-out",
-    "• checkpoint: DeBERTa-v3-large-mnli (GPU) / distilbert-mnli (CPU)",
+    "• checkpoint: DeBERTa-v3-large-mnli-fever-anli-ling-wanli (GPU) /"
+    " DeBERTa-v3-base-mnli-fever-anli (CPU)",
     "• generalises across the strict split — NLI knowledge is homonym-agnostic",
 ], size=17)
 text(s, 0.5, 4.7, 12.3, 0.9,
@@ -208,8 +209,9 @@ title_bar(s, "Component B — gloss-informed regressor")
 text(s, 0.5, 1.2, 12.3, 3.6, [
     "• input: [sentence] || homonym: gloss [example] … [story] precontext ending",
     "• gloss next to the lexical anchor (Blevins & Zettlemoyer, ACL 2020)",
-    "• linear head on [CLS], MSE vs human mean, z-scored target",
-    "• lr 1e-5, 4 epochs, warmup, grad-clip, fp16; early-stop on hold-out ρ",
+    "• mean-pooled encoder (Reimers & Gurevych), z-scored target",
+    "• loss = MSE + 0.1·(1−ρ̂)  (batch-Pearson rank-aligned, our contribution)",
+    "• lr 1e-5 + layer-wise LR decay 0.95 (Howard & Ruder), 4 ep, bf16; early-stop on hold-out ρ",
     "• 3 seeds {13,42,123} averaged",
 ], size=17)
 text(s, 0.5, 4.8, 12.3, 0.7, f"dev: acc@std {T['B_ACC']} · ρ {T['B_RHO']}",
@@ -223,13 +225,14 @@ s = slide()
 title_bar(s, "Component C — NOVEL Likert-distribution head")
 text(s, 0.5, 1.15, 12.3, 3.9, [
     "Predict the full 5-vote distribution p = softmax(Wh):",
-    "   loss = KL(empirical votes ‖ p) + 0.3·MSE(Σ k·p_k, mean)",
+    "   loss = KL(votes ‖ p) + 0.3·MSE(Σ k·p_k, mean) + 0.1·(1−ρ̂)",
     "   prediction = E[k] = Σ k·p_k   → intrinsically continuous in [1,5]",
     "   uncertainty = Σ p_k (k−E)²    → free per-sample confidence",
     "",
-    "Why novel for this task: it models the annotator disagreement the data",
-    "explicitly provides; a mean-only objective discards it. Uncertainty is",
-    "reused to gate the ensemble (second novel use).",
+    "Novel (ours): this distribution head + rank-aligned loss + uncertainty gate.",
+    "Adapted (cited): gloss input (Blevins), zero-shot NLI (Yin), mean-pool",
+    "(Reimers), layer-wise LR (Howard & Ruder).",
+    "Models the annotator disagreement a mean-only objective discards.",
 ], size=16)
 text(s, 0.5, 5.2, 12.3, 0.7,
      f"dev: acc@std {T['C_ACC']} · ρ {T['C_RHO']}   |   "
@@ -244,7 +247,8 @@ notes(s, "This is our headline contribution: distribution matching plus an "
 s = slide()
 title_bar(s, "Ensemble & honest evaluation")
 text(s, 0.5, 1.3, 12.3, 3.6, [
-    "• convex weight grid search maximising hold-out Spearman",
+    "• coarse convex-weight candidate set on the hold-out (a fine grid overfits 276 rows)",
+    "• guard: keep a blend only if it beats the best single component by a margin",
     "• one final isotonic calibration on the hold-out, clip [1,5]",
     "• uncertainty-gated variant (ablation): shrink C where it is unsure",
     "• dev is NEVER tuned on — it mirrors the hidden test (homonym-disjoint)",
@@ -300,7 +304,34 @@ footer(s, 13)
 notes(s, "We show what we tried: the continuous-prediction lever, calibration "
          "choice, MSE vs CORN vs distribution, and component drop-one.")
 
-# 14 — Novelty payoff
+# 14 — Discussion (project E.5 points)
+s = slide()
+title_bar(s, "Discussion (project E.5)")
+text(s, 0.5, 1.15, 12.3, 5.4, [
+    "• Dataset impact — graded, multi-annotator + homonym-disjoint split: "
+    "caps lexical methods, rewards semantic generalisation; σ≥1.2 on 35% of "
+    "train is an irreducible metric ceiling.",
+    "",
+    "• Approach trade-offs — A: no training, generalises, but capped by NLI "
+    "sense sensitivity. B: strongest per-item (OK) but data-hungry. "
+    "C: data-efficient, free uncertainty, slightly noisier scalar.",
+    "",
+    f"• vs. systems — no public 2026 SOTA; we beat the best milestone "
+    f"baseline ~3.7× on ρ; best component {T['B_ACC']} / {T['B_RHO']} (OK).",
+    "",
+    "• Limitations — annotator-disagreement ceiling; 276-row hold-out limits "
+    "ensemble tuning; continuous output exploits scorer tolerance; "
+    "hand-designed NLI templates.",
+    "",
+    "• If more time — nested-CV hold-out, learned blender, MLM pre-train on "
+    "SemCor, prompt/few-shot for A, back-translation augmentation.",
+], size=13)
+footer(s, 14)
+notes(s, "We explicitly cover the five required discussion points: dataset "
+         "impact, approach trade-offs, comparison to systems, limitations, and "
+         "future work — same as report Section 5.")
+
+# 15 — Novelty payoff
 s = slide()
 title_bar(s, "Novelty payoff — uncertainty tracks error")
 picture(s, "fig10_uncertainty_vs_error.png", 3.0, 1.3, 7.3)
@@ -308,11 +339,11 @@ text(s, 0.5, 6.3, 12.3, 0.5,
      "Component C's predicted variance correlates with absolute error — used "
      "to gate the ensemble.", size=14, italic=True, color=GREY,
      align=PP_ALIGN.CENTER)
-footer(s, 14)
+footer(s, 15)
 notes(s, "The distribution head's variance is a meaningful confidence signal, "
          "validating the uncertainty-gated ensemble idea.")
 
-# 15 — Related work
+# 16 — Related work
 s = slide()
 title_bar(s, "Related work (cited)")
 text(s, 0.5, 1.2, 12.3, 5.0, [
@@ -321,20 +352,22 @@ text(s, 0.5, 1.2, 12.3, 5.0, [
     "• Yin, Hay & Roth, zero-shot via NLI — EMNLP 2019  (we apply)",
     "• Williams et al., MNLI — NAACL 2018 ; Bowman et al., SNLI — EMNLP 2015",
     "• Devlin et al., BERT — NAACL 2019 ; Reimers & Gurevych, SBERT — EMNLP 2019",
+    "• Howard & Ruder, ULMFiT (layer-wise LR) — ACL 2018  (we adapt)",
     "• Loureiro & Jorge, LMMS — ACL 2019 ; Brown et al. — NeurIPS 2020",
     "• Cao, Mirjalili & Raschka, rank-consistent ordinal — Pattern Recog. Letters 2020",
-], size=16)
-footer(s, 15)
-notes(s, "Ten references from allowed venues; we directly re-implement the "
-         "gloss-informed and zero-shot-via-NLI lines.")
+], size=15)
+footer(s, 16)
+notes(s, "Eleven references, all from allowed venues; we directly re-implement "
+         "the gloss-informed and zero-shot-via-NLI lines and adapt mean-pool "
+         "(SBERT) and layer-wise LR (ULMFiT).")
 
-# 16 — Contributions & close
+# 17 — Contributions & close
 s = slide()
 title_bar(s, "Individual contributions & takeaways")
 text(s, 0.5, 1.2, 12.3, 2.7, [
-    "Member 1 — Component A (NLI), related work, results & ablations",
-    "Member 2 — Component B (regressor), data pipeline & holdout, methodology",
-    "Member 3 — Component C (novel head), ensemble, figures, reproducibility",
+    "Taylan İrak — Component A (NLI), related work, results & ablations",
+    "Member 2 (name) — Component B (regressor), data pipeline & holdout, methodology",
+    "Member 3 (name) — Component C (novel head), ensemble, figures, reproducibility",
 ], size=17)
 text(s, 0.5, 4.0, 12.3, 2.3, [
     "Takeaways:",
@@ -344,7 +377,7 @@ text(s, 0.5, 4.0, 12.3, 2.3, [
 ], size=16, color=NAVY)
 text(s, 0.5, 6.3, 12.3, 0.5, "Thank you — questions?", size=18, bold=True,
      color=GREY, align=PP_ALIGN.CENTER)
-footer(s, 16)
+footer(s, 17)
 notes(s, "Equal split across members; happy to take questions on any component.")
 
 prs.save(str(OUT))

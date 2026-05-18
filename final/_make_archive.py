@@ -19,7 +19,7 @@ DELIVERABLES = [
     "GroupXX_final_report.md",
     "GroupXX_final_report.pdf",
     "GroupXX_final_report.docx",
-    "GroupXX_final_presentation.pptx",
+    "Group24_final_presentation.pptx",
     "GroupXX_final_notebook.ipynb",
     "README.md",
     "RUN_ON_GPU.md",
