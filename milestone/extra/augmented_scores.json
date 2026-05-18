@@ -1,0 +1,33 @@
+{
+  "augmentation_counts": {
+    "synonym_swap": 1660,
+    "gloss_paraphrase": 2232,
+    "likert_mixup": 517,
+    "wic_pseudo": 160
+  },
+  "pool_sizes": {
+    "original train": 2280,
+    "+ synonym-swap": 3940,
+    "+ gloss paraphrase": 6172,
+    "+ Likert mix-up": 6689,
+    "+ WiC pseudo-entries": 6849
+  },
+  "dev_results": {
+    "baseline (train only)": {
+      "spearman": 0.12429683649226883,
+      "accuracy_at_std": 0.5272108843537415
+    },
+    "train + synonym+paraphrase": {
+      "spearman": 0.150179412771054,
+      "accuracy_at_std": 0.5272108843537415
+    },
+    "train + syn+par + mix-up": {
+      "spearman": 0.1416583349465578,
+      "accuracy_at_std": 0.5374149659863946
+    },
+    "train + syn+par + mix + WiC": {
+      "spearman": 0.13360145219270125,
+      "accuracy_at_std": 0.5340136054421769
+    }
+  }
+}

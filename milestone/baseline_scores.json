@@ -1,0 +1,46 @@
+{
+  "stats": {
+    "sizes": {
+      "train": 2280,
+      "dev": 588,
+      "test": 930
+    },
+    "mean_avg_train": 3.140029239766082,
+    "median_avg_train": 3.2,
+    "mean_stdev_train": 0.9482893987059047,
+    "unique_homonyms": {
+      "train_unique": 220,
+      "dev_unique": 55,
+      "test_unique": 87,
+      "dev_in_train": 0,
+      "test_in_train": 1
+    },
+    "mean_tok_lengths": {
+      "precontext": 31.45,
+      "sentence": 9.468421052631578,
+      "ending": 9.06842105263158
+    }
+  },
+  "results": {
+    "majority_4": {
+      "spearman": 0.0,
+      "accuracy_at_std": 0.5697278911564626
+    },
+    "random": {
+      "spearman": 0.03336369775698571,
+      "accuracy_at_std": 0.4370748299319728
+    },
+    "mean_of_train_rounded_3": {
+      "spearman": 0.0,
+      "accuracy_at_std": 0.5272108843537415
+    },
+    "per_homonym_mean": {
+      "spearman": 0.0,
+      "accuracy_at_std": 0.5272108843537415
+    },
+    "neutral_3": {
+      "spearman": 0.0,
+      "accuracy_at_std": 0.5272108843537415
+    }
+  }
+}

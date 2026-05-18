@@ -1,0 +1,210 @@
+{
+  "meta": {
+    "sizes": {
+      "train": 2280,
+      "dev": 588,
+      "test": 930
+    },
+    "holdout": {
+      "fit": 2004,
+      "holdout": 276,
+      "holdout_homonyms": 22
+    },
+    "homonym_overlap": {
+      "dev_in_train": 0,
+      "test_in_train": 1
+    },
+    "label_stats": {
+      "mean_avg": 3.140029239766082,
+      "mean_stdev": 0.9482893987059047,
+      "frac_high_disagreement": 0.34868421052631576
+    },
+    "runtime_mode": "CPU (roberta-base, seq128, bs4\u00d7ga4, full data, 4 epochs) \u2014 weaker than canonical GPU",
+    "wall_time_sec": 32704.9
+  },
+  "targets": {
+    "OK": {
+      "accuracy_at_std": 0.7,
+      "spearman": 0.6
+    },
+    "Good": {
+      "accuracy_at_std": 0.8,
+      "spearman": 0.7
+    }
+  },
+  "baselines": {
+    "majority_4": {
+      "accuracy_at_std": 0.5697278911564626,
+      "spearman": NaN
+    },
+    "mean_of_train": {
+      "accuracy_at_std": 0.5272108843537415,
+      "spearman": NaN
+    },
+    "tfidf_cosine": {
+      "accuracy_at_std": 0.5629251700680272,
+      "spearman": 0.18518155003560594
+    },
+    "feature_ridge": {
+      "accuracy_at_std": 0.5680272108843537,
+      "spearman": 0.16617819498352493
+    }
+  },
+  "components": {
+    "A_nli": {
+      "model": "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli",
+      "dev": {
+        "accuracy_at_std": 0.5901360544217688,
+        "spearman": 0.14232973937524895
+      },
+      "holdout_spearman": 0.28195365838046793,
+      "calibration_linear_dev_spearman": 0.15258635122412134
+    },
+    "B_encoder": {
+      "model": "roberta-base",
+      "seeds": [
+        42
+      ],
+      "best_holdout_rho": 0.3884058029811194,
+      "holdout_curves": [
+        [
+          0.11979520180307998,
+          0.23726932512679078,
+          0.3870370497687441,
+          0.3884058029811194
+        ]
+      ],
+      "dev": {
+        "accuracy_at_std": 0.6496598639455783,
+        "spearman": 0.323749545317227
+      }
+    },
+    "C_likert": {
+      "model": "roberta-base",
+      "objective": "distribution",
+      "best_holdout_rho": 0.37075634623219583,
+      "holdout_curves": [
+        [
+          0.17924407801398956,
+          0.3359770387773846,
+          0.34861707026982436,
+          0.37075634623219583
+        ]
+      ],
+      "dev": {
+        "accuracy_at_std": 0.6819727891156463,
+        "spearman": 0.3949354046966539
+      }
+    }
+  },
+  "ensemble": {
+    "weights": {
+      "A_nli": 0.6,
+      "B_encoder": 0.2,
+      "C_likert": 0.2
+    },
+    "dev_continuous": {
+      "accuracy_at_std": 0.6530612244897959,
+      "spearman": 0.36997020842531725
+    },
+    "dev_integer": {
+      "accuracy_at_std": 0.6156462585034014,
+      "spearman": 0.32843263858663
+    },
+    "dev_uncertainty_gated": {
+      "accuracy_at_std": 0.6292517006802721,
+      "spearman": 0.3392632284430279
+    },
+    "verdict": "Below OK"
+  },
+  "ablations": {
+    "nli_calibration": {
+      "isotonic": 0.14232973937524895,
+      "linear": 0.15258635122412134
+    },
+    "head_objective": {
+      "distribution_KL": 0.3949354046966539,
+      "mse_regressor": 0.323749545317227
+    },
+    "continuous_vs_int": {
+      "continuous": {
+        "accuracy_at_std": 0.6530612244897959,
+        "spearman": 0.36997020842531725
+      },
+      "rounded_int": {
+        "accuracy_at_std": 0.6156462585034014,
+        "spearman": 0.32843263858663
+      }
+    },
+    "ensemble_drop_one": {
+      "drop_A": {
+        "accuracy_at_std": 0.6326530612244898,
+        "spearman": 0.3866121624357952
+      },
+      "drop_B": {
+        "accuracy_at_std": 0.6445578231292517,
+        "spearman": 0.32799563530659115
+      },
+      "drop_C": {
+        "accuracy_at_std": 0.6326530612244898,
+        "spearman": 0.27534355245338976
+      }
+    }
+  },
+  "classification": {
+    "confusion_matrix": [
+      [
+        6,
+        3,
+        51,
+        8,
+        0
+      ],
+      [
+        9,
+        14,
+        90,
+        20,
+        0
+      ],
+      [
+        3,
+        11,
+        91,
+        37,
+        3
+      ],
+      [
+        1,
+        5,
+        82,
+        54,
+        5
+      ],
+      [
+        1,
+        1,
+        45,
+        41,
+        7
+      ]
+    ],
+    "labels": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "macro_precision": 0.35388265333988744,
+    "macro_recall": 0.25242316164215234,
+    "macro_f1": 0.22884073527015653,
+    "per_class_f1": [
+      0.13636363636363635,
+      0.16766467065868262,
+      0.3611111111111111,
+      0.3517915309446254,
+      0.12727272727272726
+    ]
+  }
+}

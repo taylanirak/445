@@ -1,0 +1,35 @@
+{
+  "results": {
+    "tfidf_cosine": {
+      "spearman": 0.19145811452398043,
+      "accuracy_at_std": 0.5272108843537415
+    },
+    "feature_ridge": {
+      "spearman": 0.128264198792807,
+      "accuracy_at_std": 0.5272108843537415
+    },
+    "feature_ridge_ordinal": {
+      "spearman": 0.10810484440630365,
+      "accuracy_at_std": 0.5510204081632653
+    }
+  },
+  "ridge_coefficients": {
+    "sim_story_gloss": 1.2287079871671571,
+    "sim_story_glossex": 1.790070998054321,
+    "sim_sent_gloss": -0.6484996755615227,
+    "sim_sent_example": 0.89606323286168,
+    "overlap_sent_gloss": -0.5873674088577177,
+    "overlap_story_gloss": -0.37726659825886466,
+    "gloss_len": 0.05184896330213107,
+    "sent_len": -0.006214761060795227,
+    "example_len": -0.09008180448689962,
+    "log_gloss_len": -0.4783426180346145,
+    "log_sent_len": 0.15715652389588916
+  },
+  "ordinal_thresholds": [
+    1.8,
+    3.125,
+    3.225,
+    3.5093750000000004
+  ]
+}

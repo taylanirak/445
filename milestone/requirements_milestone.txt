@@ -1,0 +1,18 @@
+# Dependencies beyond the repo root's requirements.txt (which pins scipy).
+pandas>=2.0
+matplotlib>=3.7
+numpy>=1.24
+scipy>=1.10
+nbformat>=5.9
+nbconvert>=7.0
+ipykernel>=6.0
+jupyter-client>=8.0
+python-pptx>=0.6
+reportlab>=4.0
+
+# Optional — needed only for the encoder fine-tune scaffold cell in the notebook
+# and for the final deliverable's training runs.
+transformers>=4.38
+torch>=2.1
+sentence-transformers>=2.6
+scikit-learn>=1.3

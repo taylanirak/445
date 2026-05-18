@@ -1,0 +1,27 @@
+# Final deliverable dependencies (in addition to the repo root requirements.txt,
+# which pins scipy for the official scoring.py).
+#
+# GPU is auto-detected; on a CUDA machine install a CUDA torch build instead of
+# the default wheel (see README). Everything here is open-source — no API keys.
+
+# --- core scientific stack ---
+numpy>=1.24
+pandas>=2.0
+scipy>=1.10
+scikit-learn>=1.3
+matplotlib>=3.7
+
+# --- neural components (A: NLI, B: regressor, C: Likert head) ---
+torch>=2.1
+transformers>=4.38
+sentencepiece>=0.1.99      # DeBERTa-v3 tokenizer
+accelerate>=0.26
+
+# --- deliverable builders (notebook / report / slides) ---
+nbformat>=5.9
+nbconvert>=7.0
+ipykernel>=6.0
+jupyter-client>=8.0
+reportlab>=4.0             # report PDF (no pandoc/LaTeX needed)
+python-docx>=1.1           # report DOCX
+python-pptx>=0.6           # presentation
