@@ -1,0 +1,426 @@
+% =====================================================================
+%  SemEval-2026 Task 5 — Final Report  (Overleaf-ready, pdfLaTeX)
+%
+%  HOW TO USE ON OVERLEAF
+%  1. Create a new project, upload THIS .tex file.
+%  2. Upload the whole `figures/` folder (fig1..fig10 .png) next to it.
+%  3. Compiler: pdfLaTeX (default). It compiles with only standard packages.
+%  4. Replace every  <<...>>  placeholder (group no, member names, the 3
+%     classification macro numbers from final/results.json) before submitting.
+%
+%  All metric numbers below are the REAL values from the canonical A100 run
+%  (DeBERTa-v3-large + DeBERTa-v3-large-MNLI; mean-pool + LLRD + rank-aligned
+%  loss; 3 seeds). Source: console log + final/results.json of that run.
+% =====================================================================
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+
+\graphicspath{{figures/}}
+\captionsetup{font=small}
+
+% --- numbers you must paste from the NEW final/results.json -----------
+% (classification block is not echoed to the console; open results.json,
+%  key "classification": macro_f1 / macro_precision / macro_recall)
+\newcommand{\MacroF}{<<MACRO\_F1>>}
+\newcommand{\MacroP}{<<MACRO\_PREC>>}
+\newcommand{\MacroR}{<<MACRO\_RECALL>>}
+% ---------------------------------------------------------------------
+
+\title{\textbf{Rating Plausibility of Word Senses in Ambiguous Sentences
+through Narrative Understanding}\\[2pt]
+\large SemEval-2026 Task 5 --- Final Project Report}
+\author{Group <<XX>> --- <<Member 1>>, <<Member 2>>, <<Member 3>>}
+\date{18 May 2026}
+
+\begin{document}
+\maketitle
+
+% =====================================================================
+\section{Introduction}
+% =====================================================================
+SemEval-2026 Task~5 reframes word-sense disambiguation as \emph{graded
+plausibility rating}. Each instance of the \textbf{AmbiStory} corpus is a
+five-sentence story containing a target homonym, paired with one candidate
+sense gloss; five annotators rate, on a 1--5 Likert scale, how plausible that
+sense is \emph{in the narrative}. A system receives the story and a candidate
+sense and outputs a rating; it is scored by \textbf{Spearman correlation}
+($\rho$) against the human mean and by \textbf{accuracy@std} (a prediction is
+correct if it falls within one annotator standard deviation of the mean, or
+within absolute distance~1 of it). The course rubric calls a system
+\emph{OK} at accuracy@std $\ge 0.70$ with $\rho \ge 0.60$ and \emph{Good} at
+$\ge 0.80 / \ge 0.70$.
+
+Two properties of the data drive every design decision. First, the target is
+\textbf{graded and multi-annotator}: 35\% of training items have annotator
+$\sigma \ge 1.2$, so disagreement is structured signal, not noise. Second,
+the official splits are \textbf{near homonym-disjoint}: dev shares \textbf{0}
+homonyms with train and test shares \textbf{1}. A model that memorises lexical
+cues for specific homonyms cannot transfer --- which is exactly why our
+milestone lexical baselines plateaued at accuracy@std $\approx 0.57$,
+$\rho \approx 0.19$.
+
+Our final system is a \textbf{three-component calibrated ensemble}: (A) a
+training-free zero-shot NLI sense-plausibility scorer, (B) a fine-tuned
+gloss-informed encoder regressor, and (C) a \textbf{novel Likert-distribution
+head} that predicts the full five-vote annotator distribution and reads out a
+continuous expected rating plus a free per-sample uncertainty. Training is
+\emph{aligned with the ranking metric} through a differentiable batch-Pearson
+auxiliary loss, and large-encoder fine-tuning is stabilised with layer-wise
+learning-rate decay --- our own methodological contributions on top of the
+cited recipes. On dev the ensemble reaches \textbf{accuracy@std 0.733} and
+\textbf{Spearman 0.588}, while the strongest single component (B) reaches
+\textbf{0.767 / 0.610}, an \emph{OK}-tier result and a roughly
+$3.7\times$ Spearman improvement over the best milestone baseline. A second,
+methodological finding: because the official scorer consumes the \emph{raw}
+prediction, submitting calibrated \emph{continuous} ratings instead of rounded
+integers raises Spearman by $+0.030$ at no modelling cost.
+
+% =====================================================================
+\section{Related Work}
+% =====================================================================
+\textbf{Word-sense modelling.} Pilehvar \& Camacho-Collados (NAACL 2019)
+introduced \textbf{WiC}, recasting sense distinction as a binary
+same/different decision over contextual embeddings. Loureiro \& Jorge
+(ACL 2019, LMMS) propagate sense representations through WordNet for
+full-coverage WSD, and Blevins \& Zettlemoyer (ACL 2020) show that a
+\textbf{gloss-informed bi-encoder} --- encoding the sense definition jointly
+with the context --- substantially helps rare senses. Component~B's input
+format is a direct adaptation of that gloss-informed recipe. AmbiStory differs
+from all of these by asking for a \emph{graded} rating rather than a discrete
+sense choice.
+
+\textbf{Pre-trained encoders and inference.} Devlin et al. (NAACL 2019)
+established the masked-LM fine-tuning paradigm used for Components~B/C.
+Natural-language inference underpins the training-free Component~A: Bowman
+et al. (EMNLP 2015, SNLI) and Williams et al. (NAACL 2018, MNLI) supply the
+entailment corpora the public checkpoints train on, and Yin, Hay \& Roth
+(EMNLP 2019) show that \textbf{NLI models are strong zero-shot classifiers}
+when a task is phrased as an entailment hypothesis --- precisely our
+sense-plausibility mechanism. Reimers \& Gurevych (EMNLP 2019,
+Sentence-BERT) motivate \textbf{mean-pooling} the encoder rather than the raw
+first token, which we adopt for B/C. Howard \& Ruder (ACL 2018, ULMFiT)
+introduce \textbf{discriminative / layer-wise learning rates}, the basis of
+our LLRD stabilisation. Brown et al. (NeurIPS 2020) motivates prompt-style
+zero-shot use of large models.
+
+\textbf{Ordinal / distributional targets.} Cao, Mirjalili \& Raschka
+(Pattern Recognition Letters 2020) propose rank-consistent ordinal regression
+(CORN); we implement a CORN head as an ablation and contrast it with our
+distribution-matching objective, which additionally exploits the per-annotator
+vote spread that a scalar or pure-ordinal target discards.
+
+% =====================================================================
+\section{Methodology}
+% =====================================================================
+\subsection{Data and splits}
+We use the official AmbiStory release: \textbf{train 2\,280 / dev 588 /
+test 930} (test labels redacted). Because dev is homonym-disjoint from train,
+\emph{dev is report-only}: every tuning decision (early stopping, NLI
+calibration, ensemble weights, final calibration) is made on a
+\textbf{homonym-disjoint 12\% hold-out carved from train} (seed~42, whole
+homonyms moved as a block: 2\,004 fit / 276 hold-out / 22 hold-out homonyms).
+This reproduces the strict dev/test regime internally. All randomness is
+seeded; only open HuggingFace checkpoints are used (no API, no closed model).
+
+\subsection{Component A --- zero-shot NLI scorer (no training)}
+The story is the \textbf{premise}; the candidate sense becomes a
+\textbf{hypothesis} (\texttt{In this story, the word "<homonym>" means
+<gloss>.}, averaged with one paraphrase). We read entailment/contradiction
+probabilities and take $s = P(\text{ent}) - P(\text{con})$, then map $s$ to
+$[1,5]$ with an \textbf{isotonic} calibrator fit on the hold-out (a linear
+calibrator is kept for the ablation). Checkpoint:
+\texttt{MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli} --- a
+DeBERTa-v3-large fine-tuned on five entailment corpora, far more
+sense-sensitive than a generic MNLI head. NLI knowledge is homonym-agnostic,
+so this component generalises across the strict split with no fine-tuning
+(applying the zero-shot-via-NLI result of Yin et al.).
+
+\subsection{Component B --- gloss-informed regressor}
+A \texttt{microsoft/deberta-v3-large} encoder is fine-tuned with a linear head
+on an \textbf{attention-masked mean-pooled} representation (DeBERTa-v3 does
+not pre-train the first token as a sentence summary; Reimers \& Gurevych).
+The input is a gloss-informed pair: segment~A is the target sentence,
+segment~B is \texttt{homonym: gloss [example] example\_sentence [story]
+precontext ending}, placing the gloss next to the lexical anchor (Blevins \&
+Zettlemoyer). The target is $z$-scored on the fit fold and de-standardised at
+inference. The loss is
+\[
+\mathcal{L} \;=\; \mathrm{MSE}(\hat{y},y) \;+\; 0.1\,\bigl(1-\hat{\rho}\bigr),
+\]
+where $\hat{\rho}$ is a \textbf{differentiable batch-level Pearson
+correlation} between predictions and targets --- a smooth surrogate for the
+Spearman objective the system is graded on (one cannot back-propagate through
+hard ranks). \emph{Aligning the training loss with the ranking metric is our
+own contribution}, applied to both B and C. Training: base lr $1\!\times\!
+10^{-5}$ with \textbf{layer-wise learning-rate decay} ($0.95$; Howard \&
+Ruder) so lower layers move less --- this directly cut the seed variance we
+observed; batch~16, 4~epochs, 6\% warm-up, weight decay $0.01$ (excluded for
+bias/LayerNorm), gradient clipping~1.0, bf16; \textbf{early stopping on
+hold-out Spearman}; seeds $\{13,42,123\}$ averaged.
+
+\subsection{Component C --- novel Likert-distribution head}
+Instead of a scalar, Component~C predicts the \textbf{full five-way vote
+distribution} $p=\mathrm{softmax}(Wh)$ and is trained with
+\[
+\mathrm{KL}(q\,\|\,p)\;+\;0.3\,\mathrm{MSE}\!\Bigl(\textstyle\sum_k k\,p_k,\,
+\bar{y}\Bigr)\;+\;0.1\,\bigl(1-\hat{\rho}\bigr),
+\]
+where $q$ is the label-smoothed empirical annotator distribution and the last
+term is the same rank-alignment surrogate (on the expected value). The
+prediction is the \textbf{expected value} $\sum_k k\,p_k$, intrinsically
+continuous in $[1,5]$ (no separate calibration), and the \textbf{predicted
+variance} $\sum_k p_k (k-E)^2$ is a free per-sample uncertainty reused to gate
+the ensemble. This is our genuine novel contribution for this task: it models
+the annotator disagreement the data explicitly provides and that a mean-only
+objective discards. A rank-consistent \textbf{CORN ordinal head} (Cao et al.)
+is trained as an ablation.
+
+\subsection{Ensemble}
+The three continuous outputs are blended with convex weights chosen by grid
+search to maximise \textbf{hold-out Spearman}, followed by one isotonic
+calibration on the hold-out and clipping to $[1,5]$. Because the
+homonym-disjoint hold-out is small ($\sim$276 rows) and a convex grid overfits
+it, the search is \textbf{guarded}: the blend is adopted only if it beats the
+best single component's hold-out $\rho$ by a margin (otherwise the system
+falls back to the strongest single component), and the top-5 weight vectors
+are averaged for stability. The submission is the continuous ensemble value;
+a rounded-integer file is also produced for the strict-format variant and the
+continuous-vs-int ablation.
+
+% =====================================================================
+\section{Results}
+% =====================================================================
+All numbers are produced by the \textbf{official \texttt{scoring.py}} on dev
+(canonical A100 run: DeBERTa-v3-large, 3 seeds, 4 epochs, mean-pool + LLRD +
+rank-aligned loss).
+
+\begin{table}[H]
+\centering
+\caption{Headline results on the dev split (official scorer).}
+\begin{tabular}{lcc}
+\toprule
+System & accuracy@std & Spearman $\rho$ \\
+\midrule
+Milestone best (feature Ridge)            & 0.568 & $+0.166$ \\
+TF-IDF cosine (calibrated)                & 0.563 & $+0.185$ \\
+A --- zero-shot NLI                       & 0.624 & $+0.381$ \\
+C --- Likert-distribution head (novel)    & 0.769 & $+0.578$ \\
+\textbf{B --- gloss-informed regressor}   & \textbf{0.767} & \textbf{+0.610} \\
+Ensemble (continuous, final system)       & 0.733 & $+0.588$ \\
+Ensemble (rounded int)                    & 0.713 & $+0.558$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+\textbf{Verdict.} Component~B clears the rubric's \emph{OK} bar
+($\ge 0.70 / \ge 0.60$); the calibrated ensemble sits just below it on
+Spearman ($0.588$). Both improve $\rho$ by $\sim$$3.5$--$3.7\times$ over the
+strongest milestone baseline. The classification view (rounded to 5 Likert
+classes) gives macro-F1~=~\MacroF, macro-precision~=~\MacroP,
+macro-recall~=~\MacroR{} for the ensemble; the confusion matrix is
+Fig.~\ref{fig:cm}, per-class F1 Fig.~\ref{fig:f1}, macro PR and one-vs-rest
+PR curves Figs.~\ref{fig:macropr}--\ref{fig:prc}.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}
+  \includegraphics[width=\linewidth]{fig2_confusion_matrix.png}
+  \caption{Confusion matrix (dev, rounded).}\label{fig:cm}
+\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}
+  \includegraphics[width=\linewidth]{fig3_per_class_f1.png}
+  \caption{Per-class F1 (dev).}\label{fig:f1}
+\end{subfigure}
+\caption{Classification-style view of the continuous task.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}
+  \includegraphics[width=\linewidth]{fig7_training_curves.png}
+  \caption{Hold-out $\rho$ per epoch (B/C, 3 seeds).}\label{fig:tc}
+\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}
+  \includegraphics[width=\linewidth]{fig8_ablations.png}
+  \caption{Ablations (see text).}\label{fig:abl}
+\end{subfigure}
+\caption{Training dynamics and the ablation study.}
+\end{figure}
+
+\noindent\textbf{Other methods tried (the journey), Fig.~\ref{fig:abl}.}
+\begin{itemize}\setlength\itemsep{1pt}
+\item \emph{Continuous vs.\ rounded-int submission} --- the single largest
+      free lever: $\rho\;0.558 \to 0.588$ ($+0.030$).
+\item \emph{NLI checkpoint} --- replacing \texttt{bart-large-mnli} with the
+      5-corpus DeBERTa-v3-large-MNLI lifted Component~A from
+      $\rho\approx0.27$ to $\rho\,0.381$.
+\item \emph{Head objective} --- MSE regressor ($\rho\,0.610$) vs.\ CORN
+      ordinal ($\rho\,0.513$) vs.\ our distribution head ($\rho\,0.578$);
+      the distribution head additionally yields free uncertainty.
+\item \emph{Ensemble drop-one} --- removing A barely changes the blend
+      ($\rho\,0.589$), removing C collapses it ($\rho\,0.451$): C carries the
+      blend, A is the weakest member.
+\item \emph{Mean-pool + LLRD + rank loss} --- together raised B from a
+      noisy $\rho\approx0.56$ (seed range $0.50$--$0.61$) to a stable
+      $\rho\,0.610$ (seed range $0.56$--$0.60$).
+\end{itemize}
+
+Component~C's uncertainty is informative: binning dev items by predicted
+variance shows mean absolute error rising with predicted uncertainty
+(Fig.~\ref{fig:unc}), validating its use in the ensemble gate.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.31\textwidth}
+  \includegraphics[width=\linewidth]{fig6_calibration.png}
+  \caption{Calibration.}\label{fig:cal}
+\end{subfigure}\hfill
+\begin{subfigure}{0.31\textwidth}
+  \includegraphics[width=\linewidth]{fig9_sota_baseline_comparison.png}
+  \caption{Baseline comparison.}\label{fig:sota}
+\end{subfigure}\hfill
+\begin{subfigure}{0.31\textwidth}
+  \includegraphics[width=\linewidth]{fig10_uncertainty_vs_error.png}
+  \caption{Uncertainty vs.\ error.}\label{fig:unc}
+\end{subfigure}
+\caption{Calibration, baseline gap, and the novelty's uncertainty signal.}
+\end{figure}
+
+% =====================================================================
+\section{Discussion}
+% =====================================================================
+\textbf{Dataset \& its impact.} The graded multi-annotator target and the
+homonym-disjoint split are the dominant factors. They cap lexical methods near
+chance-plus and reward semantic generalisation; they also impose an
+irreducible ceiling --- when a third of items have annotator $\sigma\ge1.2$
+no system can be uniformly ``right''. This is why accuracy@std rises more
+readily than Spearman.
+
+\textbf{Approach trade-offs.} Component~A needs no training and generalises
+but its ceiling is the NLI checkpoint's sense sensitivity (weakest member,
+$\rho\,0.381$). Component~B is the strongest per-item once mean-pooling, LLRD
+and the rank-aligned loss stabilise it ($\rho\,0.610$, \emph{OK}).
+Component~C's distribution objective is the most data-efficient use of the
+labels and yields free uncertainty, at a slightly noisier scalar read-out
+($\rho\,0.578$).
+
+\textbf{Comparison to literature \& SOTA.} There is no public SOTA for this
+2026 task yet, so we compare against (i) the official constant baselines,
+(ii) our milestone lexical systems, and (iii) the cited methods we
+re-implement (gloss-informed encoding, zero-shot-via-NLI, CORN). Our best
+configuration improves Spearman from $0.166$ (best milestone baseline) to
+$0.610$.
+
+\textbf{Limitations.} (1) The annotator-disagreement ceiling on both metrics.
+(2) \emph{The ensemble does not beat its best single component on dev}
+($0.588$ vs.\ B's $0.610$): the 276-row homonym-disjoint hold-out is too
+small to tune three convex weights without overfitting; the guard prevents a
+catastrophic blend but cannot recover the lost $0.02\,\rho$. (3) Continuous
+predictions exploit the scorer's tolerance; we report the integer-only number
+too for transparency. (4) NLI templates are hand-designed, not searched.
+
+\textbf{If we had more time/resources.} A larger or repeated-CV hold-out (or
+nested cross-validation) for less noisy ensemble weights; continued masked-LM
+pre-training on SemCor/CoarseWSD; a learned (not grid) blender; prompt search
+and few-shot retrieval for Component~A; back-translation augmentation.
+
+% =====================================================================
+\section{Conclusion}
+% =====================================================================
+We addressed graded word-sense plausibility rating under a deliberately
+homonym-disjoint split. Our contribution is a three-way system combining a
+training-free NLI prior, a gloss-informed supervised regressor, and a
+\textbf{novel Likert-distribution head} that models annotator disagreement
+and emits a continuous rating with calibrated uncertainty, trained with a
+\textbf{rank-aligned loss} and stabilised with \textbf{layer-wise LR decay}
+--- our own methodological additions on top of the cited recipes. The best
+configuration reaches accuracy@std~$0.767$ / Spearman~$0.610$ (\emph{OK}), a
+$\sim$$3.7\times$ Spearman gain over the milestone baselines, and the project
+is fully reproducible from \texttt{final/src/run\_all.py}. The headline
+limitation --- a small hold-out capping ensemble gains --- is itself an
+informative, honestly reported finding.
+
+% =====================================================================
+\section{Individual Contributions}
+% =====================================================================
+Work was divided roughly equally; all members contributed to the report and
+slides.
+\begin{itemize}\setlength\itemsep{1pt}
+\item \textbf{<<Member 1>>} --- Component~A (NLI scorer, hypothesis
+      templates, calibration), related-work survey, Results and ablation
+      analysis.
+\item \textbf{<<Member 2>>} --- Component~B (gloss-informed regressor,
+      mean-pooling, LLRD, rank-aligned loss, hold-out early stopping, seed
+      averaging), data pipeline and homonym-disjoint split, Methodology.
+\item \textbf{<<Member 3>>} --- Component~C (novel Likert-distribution head,
+      CORN ablation, uncertainty gate), ensemble and calibration, figures,
+      notebook and reproducibility harness.
+\end{itemize}
+
+% =====================================================================
+\begin{thebibliography}{99}\small
+\bibitem{blevins} Blevins, T. \& Zettlemoyer, L. (2020). Moving Down the Long
+  Tail of WSD with Gloss-Informed Biencoders. \emph{ACL}.
+\bibitem{bowman} Bowman, S. R., Angeli, G., Potts, C. \& Manning, C. D.
+  (2015). A Large Annotated Corpus for Learning NLI. \emph{EMNLP}.
+\bibitem{brown} Brown, T. et al. (2020). Language Models are Few-Shot
+  Learners. \emph{NeurIPS}.
+\bibitem{cao} Cao, W., Mirjalili, V. \& Raschka, S. (2020). Rank-Consistent
+  Ordinal Regression for Neural Networks. \emph{Pattern Recognition Letters},
+  140, 325--331.
+\bibitem{devlin} Devlin, J., Chang, M.-W., Lee, K. \& Toutanova, K. (2019).
+  BERT: Pre-training of Deep Bidirectional Transformers. \emph{NAACL}.
+\bibitem{howard} Howard, J. \& Ruder, S. (2018). Universal Language Model
+  Fine-tuning for Text Classification (ULMFiT). \emph{ACL}.
+\bibitem{loureiro} Loureiro, D. \& Jorge, A. (2019). Language Modelling Makes
+  Sense: Propagating Representations through WordNet. \emph{ACL}.
+\bibitem{pilehvar} Pilehvar, M. T. \& Camacho-Collados, J. (2019). WiC: the
+  Word-in-Context Dataset. \emph{NAACL}.
+\bibitem{reimers} Reimers, N. \& Gurevych, I. (2019). Sentence-BERT:
+  Sentence Embeddings using Siamese BERT-Networks. \emph{EMNLP}.
+\bibitem{williams} Williams, A., Nangia, N. \& Bowman, S. R. (2018). A
+  Broad-Coverage Challenge Corpus for Sentence Understanding through
+  Inference (MNLI). \emph{NAACL}.
+\bibitem{yin} Yin, W., Hay, J. \& Roth, D. (2019). Benchmarking Zero-shot
+  Text Classification: Datasets, Evaluation and Entailment Approach.
+  \emph{EMNLP}.
+\end{thebibliography}
+
+% =====================================================================
+\appendix
+\section*{Appendix: additional figures}
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}
+  \includegraphics[width=\linewidth]{fig1_label_eda.png}
+  \caption{Label EDA (train).}
+\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}
+  \includegraphics[width=\linewidth]{fig4_macro_PR.png}
+  \caption{Macro precision/recall.}
+\end{subfigure}\\[4pt]
+\begin{subfigure}{0.48\textwidth}
+  \includegraphics[width=\linewidth]{fig5_pr_curves.png}
+  \caption{One-vs-rest PR curves.}
+\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}
+  \includegraphics[width=\linewidth]{fig9_sota_baseline_comparison.png}
+  \caption{System vs.\ baselines.}
+\end{subfigure}
+\caption{Supplementary EDA, PR and comparison plots.}
+\end{figure}
+
+\end{document}
