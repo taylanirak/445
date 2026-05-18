@@ -66,13 +66,20 @@ def build_token_map(results: dict | None = None) -> dict[str, str]:
                   key=lambda kv: kv[1].get("accuracy_at_std", 0),
                   default=(None, {}))
 
-    # drop-one: which removal hurts Spearman most
+    # drop-one: which removal hurts Spearman most. A NaN spearman means that
+    # removal degenerated the system (the worst possible outcome), so it must
+    # rank as the largest drop — plain min() mis-handles NaN, so map it low.
     drop = ab.get("ensemble_drop_one", {})
-    worst = min(
-        drop.items(),
-        key=lambda kv: kv[1].get("spearman", 1.0),
-        default=(None, None),
-    )[0]
+
+    def _drop_rho(kv):
+        v = kv[1].get("spearman", 1.0)
+        try:
+            v = float(v)
+            return -1e9 if v != v else v  # v!=v ⇒ NaN ⇒ worst
+        except (TypeError, ValueError):
+            return -1e9
+
+    worst = min(drop.items(), key=_drop_rho, default=(None, None))[0]
     worst = {"drop_A": "the NLI scorer", "drop_B": "the encoder regressor",
              "drop_C": "the Likert head"}.get(worst, "any single component")
 

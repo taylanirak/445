@@ -19,8 +19,8 @@
       "mean_stdev": 0.9482893987059047,
       "frac_high_disagreement": 0.34868421052631576
     },
-    "runtime_mode": "CPU (roberta-base, seq128, bs4\u00d7ga4, full data, 4 epochs) \u2014 weaker than canonical GPU",
-    "wall_time_sec": 32704.9
+    "runtime_mode": "GPU / deberta-v3-large (canonical)",
+    "wall_time_sec": 1600.7
   },
   "targets": {
     "OK": {
@@ -52,141 +52,168 @@
   },
   "components": {
     "A_nli": {
-      "model": "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli",
+      "model": "MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli",
       "dev": {
-        "accuracy_at_std": 0.5901360544217688,
-        "spearman": 0.14232973937524895
+        "accuracy_at_std": 0.6241496598639455,
+        "spearman": 0.3806167594163828
       },
-      "holdout_spearman": 0.28195365838046793,
-      "calibration_linear_dev_spearman": 0.15258635122412134
+      "holdout_spearman": 0.3837713938884297,
+      "calibration_linear_dev_spearman": 0.3778666346991165
     },
     "B_encoder": {
-      "model": "roberta-base",
+      "model": "microsoft/deberta-v3-large",
       "seeds": [
-        42
+        13,
+        42,
+        123
       ],
-      "best_holdout_rho": 0.3884058029811194,
+      "best_holdout_rho": 0.5756975549818762,
       "holdout_curves": [
         [
-          0.11979520180307998,
-          0.23726932512679078,
-          0.3870370497687441,
-          0.3884058029811194
+          0.4138097415902686,
+          0.5155075447041811,
+          0.5650003464431438,
+          0.5657911014877367
+        ],
+        [
+          0.5735006411962834,
+          0.5513319461447745,
+          0.5922024260422858,
+          0.6000575707618407
+        ],
+        [
+          0.4284992282373967,
+          0.5537746394033318,
+          0.5348963742519399,
+          0.5612439926960515
         ]
       ],
       "dev": {
-        "accuracy_at_std": 0.6496598639455783,
-        "spearman": 0.323749545317227
+        "accuracy_at_std": 0.7670068027210885,
+        "spearman": 0.6101135402637492
       }
     },
     "C_likert": {
-      "model": "roberta-base",
+      "model": "microsoft/deberta-v3-large",
       "objective": "distribution",
-      "best_holdout_rho": 0.37075634623219583,
+      "best_holdout_rho": 0.605474323754935,
       "holdout_curves": [
         [
-          0.17924407801398956,
-          0.3359770387773846,
-          0.34861707026982436,
-          0.37075634623219583
+          0.5863202578681929,
+          0.6480582016251272,
+          0.6730132964741807,
+          0.6772404545470624
+        ],
+        [
+          0.4897369841064244,
+          0.5447855002301072,
+          0.562657318641012,
+          0.5690480728336847
+        ],
+        [
+          0.42255546680952366,
+          0.5330740716165581,
+          0.5640889504724564,
+          0.5701344438840581
         ]
       ],
       "dev": {
-        "accuracy_at_std": 0.6819727891156463,
-        "spearman": 0.3949354046966539
+        "accuracy_at_std": 0.7687074829931972,
+        "spearman": 0.5783244758568029
       }
     }
   },
   "ensemble": {
     "weights": {
-      "A_nli": 0.6,
-      "B_encoder": 0.2,
-      "C_likert": 0.2
+      "A_nli": 0.0,
+      "B_encoder": 0.0,
+      "C_likert": 1.0
     },
     "dev_continuous": {
-      "accuracy_at_std": 0.6530612244897959,
-      "spearman": 0.36997020842531725
+      "accuracy_at_std": 0.7482993197278912,
+      "spearman": 0.5732106054723363
     },
     "dev_integer": {
-      "accuracy_at_std": 0.6156462585034014,
-      "spearman": 0.32843263858663
+      "accuracy_at_std": 0.7329931972789115,
+      "spearman": 0.5600609304803573
     },
     "dev_uncertainty_gated": {
-      "accuracy_at_std": 0.6292517006802721,
-      "spearman": 0.3392632284430279
+      "accuracy_at_std": 0.7687074829931972,
+      "spearman": 0.5783244758568029
     },
     "verdict": "Below OK"
   },
   "ablations": {
     "nli_calibration": {
-      "isotonic": 0.14232973937524895,
-      "linear": 0.15258635122412134
+      "isotonic": 0.3806167594163828,
+      "linear": 0.3778666346991165
     },
     "head_objective": {
-      "distribution_KL": 0.3949354046966539,
-      "mse_regressor": 0.323749545317227
+      "distribution_KL": 0.5783244758568029,
+      "mse_regressor": 0.6101135402637492,
+      "corn_ordinal": 0.5131163675857483
     },
     "continuous_vs_int": {
       "continuous": {
-        "accuracy_at_std": 0.6530612244897959,
-        "spearman": 0.36997020842531725
+        "accuracy_at_std": 0.7482993197278912,
+        "spearman": 0.5732106054723363
       },
       "rounded_int": {
-        "accuracy_at_std": 0.6156462585034014,
-        "spearman": 0.32843263858663
+        "accuracy_at_std": 0.7329931972789115,
+        "spearman": 0.5600609304803573
       }
     },
     "ensemble_drop_one": {
       "drop_A": {
-        "accuracy_at_std": 0.6326530612244898,
-        "spearman": 0.3866121624357952
+        "accuracy_at_std": 0.7482993197278912,
+        "spearman": 0.5732106054723363
       },
       "drop_B": {
-        "accuracy_at_std": 0.6445578231292517,
-        "spearman": 0.32799563530659115
+        "accuracy_at_std": 0.7482993197278912,
+        "spearman": 0.5732106054723363
       },
       "drop_C": {
-        "accuracy_at_std": 0.6326530612244898,
-        "spearman": 0.27534355245338976
+        "accuracy_at_std": 0.272108843537415,
+        "spearman": NaN
       }
     }
   },
   "classification": {
     "confusion_matrix": [
       [
-        6,
-        3,
-        51,
-        8,
-        0
-      ],
-      [
-        9,
-        14,
-        90,
-        20,
-        0
-      ],
-      [
-        3,
-        11,
-        91,
+        4,
         37,
-        3
+        21,
+        6,
+        0
       ],
       [
-        1,
-        5,
-        82,
+        3,
+        61,
         54,
-        5
+        15,
+        0
       ],
       [
-        1,
-        1,
-        45,
-        41,
-        7
+        0,
+        28,
+        63,
+        54,
+        0
+      ],
+      [
+        0,
+        14,
+        47,
+        86,
+        0
+      ],
+      [
+        0,
+        2,
+        22,
+        71,
+        0
       ]
     ],
     "labels": [
@@ -196,15 +223,15 @@
       4,
       5
     ],
-    "macro_precision": 0.35388265333988744,
-    "macro_recall": 0.25242316164215234,
-    "macro_f1": 0.22884073527015653,
+    "macro_precision": 0.33520870349533477,
+    "macro_recall": 0.30739738363584995,
+    "macro_f1": 0.2724166866554729,
     "per_class_f1": [
-      0.13636363636363635,
-      0.16766467065868262,
-      0.3611111111111111,
-      0.3517915309446254,
-      0.12727272727272726
+      0.10666666666666667,
+      0.44363636363636366,
+      0.35795454545454547,
+      0.45382585751978893,
+      0.0
     ]
   }
 }

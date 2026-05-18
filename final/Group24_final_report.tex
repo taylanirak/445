@@ -52,16 +52,16 @@
 \newcommand{\Cacc}{0.769}\newcommand{\Crho}{+0.578}
 \newcommand{\CornRho}{+0.513}
 % ---- ensemble (dev) -------------------------------------------------
-\newcommand{\EnsAcc}{0.733}\newcommand{\EnsRho}{+0.588}
-\newcommand{\EnsIntAcc}{0.713}\newcommand{\EnsIntRho}{+0.558}
+\newcommand{\EnsAcc}{0.748}\newcommand{\EnsRho}{+0.573}
+\newcommand{\EnsIntAcc}{0.733}\newcommand{\EnsIntRho}{+0.560}
 \newcommand{\EnsVerdict}{Below OK}              % "OK" / "Good" / "Below OK"
-\newcommand{\Wa}{--}\newcommand{\Wb}{--}\newcommand{\Wc}{--} % ensemble.weights
+\newcommand{\Wa}{0.00}\newcommand{\Wb}{0.00}\newcommand{\Wc}{1.00} % ensemble.weights
 % ---- classification view (results.json -> "classification") ---------
-\newcommand{\MacroF}{0.297}
-\newcommand{\MacroP}{0.400}
-\newcommand{\MacroR}{0.310}
+\newcommand{\MacroF}{0.272}
+\newcommand{\MacroP}{0.335}
+\newcommand{\MacroR}{0.307}
 % ---- ablations ------------------------------------------------------
-\newcommand{\AblIntRho}{+0.558}\newcommand{\AblContRho}{+0.588}
+\newcommand{\AblIntRho}{+0.560}\newcommand{\AblContRho}{+0.573}
 \newcommand{\DropWorst}{the Likert-distribution head (C)} % biggest drop-one loss
 % =====================================================================
 
@@ -249,8 +249,11 @@ Ensemble (rounded int)                    & \EnsIntAcc & \EnsIntRho \\
 \end{table}
 
 \noindent\textbf{Verdict vs.\ rubric.} Component~B clears the \emph{OK} bar
-($\ge0.70/\ge0.60$); the calibrated ensemble is \EnsVerdict{} (weights chosen
-on the hold-out under the no-worse-than-best-single guard).
+($\ge0.70/\ge0.60$). The calibrated ensemble is \EnsVerdict{}: the
+no-worse-than-best-single guard found no blend that beat the best hold-out
+component, so it fell back to \textbf{Component~C alone} (weights
+A~\Wa{}/B~\Wb{}/C~\Wc{}) --- i.e.\ the submitted system is the
+isotonic-recalibrated Likert head.
 \textbf{Classification view:} confusion matrix
 Fig.~\ref{fig:cm}, per-class F1 Fig.~\ref{fig:f1}; \textbf{macro-F1~=~\MacroF,
 macro-precision~=~\MacroP, macro-recall~=~\MacroR}; one-vs-rest
@@ -288,8 +291,9 @@ zero-shot-via-NLI, CORN); our best configuration improves Spearman from
 \item \emph{Head objective} --- MSE regressor (\Brho{}) vs.\ CORN ordinal
       (\CornRho{}) vs.\ our distribution head (\Crho{}); the distribution
       head additionally yields free uncertainty.
-\item \emph{Ensemble drop-one} --- the largest drop comes from removing
-      \DropWorst{}; removing A barely changes the blend.
+\item \emph{Ensemble drop-one} --- since the guard selected C-only
+      (A,B weight $0$), removing A or B leaves the system unchanged while
+      removing \DropWorst{} collapses it: the blend is exactly C.
 \item \emph{Mean-pool + LLRD + rank loss} --- jointly turned a noisy
       $\rho\!\approx\!0.56$ (seed range $0.50$--$0.61$) into a stable
       \Brho{} (seed range $0.56$--$0.60$).
@@ -334,10 +338,11 @@ milestone baseline and reaches an \emph{OK}-tier single component; there is no
 public 2026 SOTA to exceed yet.
 
 \textbf{Limitations.} (1)~The annotator-disagreement ceiling on both metrics.
-(2)~The ensemble does not beat its best single component on dev
-(\EnsRho{} vs.\ B's \Brho{}): the 276-row homonym-disjoint hold-out is too
-small to tune convex weights without overfitting; the guard prevents a
-catastrophic blend but cannot recover the gap. (3)~Continuous predictions
+(2)~The ensemble does not beat the best single component on dev
+(\EnsRho{} vs.\ B's \Brho{}): the guard correctly fell back to the
+strongest \emph{hold-out} component (C), but C is not the strongest on
+\emph{dev} (B is) --- an irreducible hold-out/dev mismatch on a 276-row
+homonym-disjoint hold-out, not a blending bug. (3)~Continuous predictions
 exploit the scorer's tolerance (we also report the integer number).
 (4)~NLI templates are hand-designed, not searched.
 
