@@ -1,8 +1,9 @@
-# GroupXX — SemEval-2026 Task 5 · Final Deliverable
+# Group 24 — SemEval-2026 Task 5 · Final Deliverable
 
 Everything required by Section E ("Final Reports") of the CS445 project
-description for the 18 May 2026 final submission. Replace `GroupXX` and the
-three `Member 1/2/3` placeholders with the real values before submitting.
+description for the 18 May 2026 final submission. Group number (24) and
+Taylan İrak's name are filled; only the two teammate names
+(`Teammate 2/3 (name)`) still need to be set before submitting.
 
 ## What this is
 
@@ -22,13 +23,14 @@ HuggingFace models only — **no API keys, fully reproducible**.
 
 | Path | What it is |
 |------|------------|
-| `GroupXX_final_report.{md,pdf,docx}` | Report (md is the source; pdf/docx are built from it, numbers injected from `results.json`). |
-| `GroupXX_final_presentation.pptx` | ~16-slide deck for the 15-minute talk, speaker notes included. |
-| `GroupXX_final_notebook.ipynb` | Executed, **output logs preserved** — narrated runnable system. |
+| `Group24_final_report.tex` | **Overleaf-ready report source** (pdfLaTeX, numbers already filled from the A100 run). Upload with the `figures/` folder. |
+| `Group24_final_report.{md,pdf,docx}` | Same report — md is the source; pdf/docx auto-built, numbers injected from `results.json`. |
+| `Group24_final_presentation.pptx` | 17-slide deck for the 15-minute talk, speaker notes included. |
+| `Group24_final_notebook.ipynb` | Executed, **output logs preserved** — narrated runnable system. |
 | `src/*.py` | The system: `data, metrics, nli_scorer, encoder_reg, likert_head, ensemble, run_all, report_fill`. |
 | `_build_{notebook,pdf,docx,pptx}.py`, `_make_figures.py` | Deliverable generators. |
 | `_check_submission.py` | Validates a predictions file with the official `format_check`. |
-| `_make_archive.py` | Bundles everything into `GroupXX_final_submission.zip`. |
+| `_make_archive.py` | Bundles everything into `Group24_final_submission.zip`. |
 | `figures/*.png` | Confusion matrix, per-class F1, macro P/R, PR curves, calibration, training curves, ablations, SOTA comparison, uncertainty. |
 | `predictions/*.jsonl` | Per-system dev predictions + `ensemble_test.jsonl` (the CodaBench file) + `_int` fallback. |
 | `results.json` | Single source of truth — every reported number, written by `run_all.py`. |
@@ -65,7 +67,7 @@ python final/_finalize.py
 #      python final/_build_pptx.py
 #      python final/_build_notebook.py     # builds AND executes (keeps outputs)
 #      python final/_check_submission.py final/predictions/ensemble_test.jsonl
-#      python final/_make_archive.py        # → final/GroupXX_final_submission.zip
+#      python final/_make_archive.py        # → final/Group24_final_submission.zip
 ```
 
 `run_all.py` writes `final/_solution_dev.jsonl` and self-scores with the repo's

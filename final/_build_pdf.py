@@ -1,4 +1,4 @@
-"""Render GroupXX_final_report.md to a PDF via reportlab.
+"""Render Group24_final_report.md to a PDF via reportlab.
 
 Mirrors the milestone PDF builder (same lightweight Markdown subset, no pandoc
 / LaTeX dependency) and additionally substitutes the live ``results.json``
@@ -23,8 +23,8 @@ FINAL = Path(__file__).resolve().parent
 sys.path.insert(0, str(FINAL))
 from src.report_fill import load_filled  # noqa: E402
 
-MD = FINAL / "GroupXX_final_report.md"
-PDF = FINAL / "GroupXX_final_report.pdf"
+MD = FINAL / "Group24_final_report.md"
+PDF = FINAL / "Group24_final_report.pdf"
 
 styles = getSampleStyleSheet()
 body = ParagraphStyle("body", parent=styles["BodyText"], fontName="Helvetica",

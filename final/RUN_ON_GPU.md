@@ -26,7 +26,7 @@ python final/_finalize.py
 
 Bitince:
 - Skorlar: `final/results.json` (ve konsolda "ENSEMBLE dev (official): ...").
-- Teslim arşivi: `final/GroupXX_final_submission.zip`.
+- Teslim arşivi: `final/Group24_final_submission.zip`.
 - CodaBench dosyası: `final/predictions/ensemble_test.jsonl`.
 
 Çökerse tekrar `python final/src/run_all.py` çalıştırın — bileşenler
@@ -50,17 +50,16 @@ Aşağıdaki metni olduğu gibi yapıştırın:
 >    build the archive.
 > 4. Report the official numbers from `final/results.json`
 >    (`ensemble.dev_continuous` and `ensemble.verdict`) and confirm
->    `final/GroupXX_final_submission.zip` was rebuilt. Do not fabricate numbers.
+>    `final/Group24_final_submission.zip` was rebuilt. Do not fabricate numbers.
 
 ## C) Teslimden önce (1 dakikalık, puan kaybı önler)
 
-Aşağıdaki yer tutucuları gerçek değerlerle değiştirin (sonra `_finalize.py`'yi
-tekrar çalıştırın ki rapor/slayt güncellensin):
+Grup no (24), Taylan İrak ve tüm sayılar zaten dolu. Geriye **tek** iş kaldı:
 
-- `final/GroupXX_final_report.md` içindeki `GroupXX`, `Member 1/2/3`, tarih.
-- Dosya adlarındaki `GroupXX_` ön ekini gerçek grup numaranızla değiştirmek
-  isterseniz: dosyaları yeniden adlandırın **ve** `final/_make_archive.py`
-  içindeki `GroupXX` adlarını güncelleyin, sonra `python final/_make_archive.py`.
+- İki takım arkadaşının ismini koy: `final/Group24_final_report.tex` içinde
+  `\MEMBERB` / `\MEMBERC`, ve `final/Group24_final_report.md` üst satırındaki
+  `Teammate 2/3 (name)`. (Solo/2 kişiyseniz fazla satırları silin.) Sonra
+  `_finalize.py`'yi tekrar çalıştırın ki pdf/docx/slayt/notebook güncellensin.
 
 ## Beklenti (dürüst)
 

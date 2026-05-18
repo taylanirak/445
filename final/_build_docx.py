@@ -1,4 +1,4 @@
-"""Render GroupXX_final_report.md to a Word .docx via python-docx.
+"""Render Group24_final_report.md to a Word .docx via python-docx.
 
 Mirrors the milestone DOCX builder and substitutes the live ``results.json``
 numbers through ``src.report_fill`` (same Markdown subset, no pandoc).
@@ -17,8 +17,8 @@ FINAL = Path(__file__).resolve().parent
 sys.path.insert(0, str(FINAL))
 from src.report_fill import load_filled  # noqa: E402
 
-MD = FINAL / "GroupXX_final_report.md"
-OUT = FINAL / "GroupXX_final_report.docx"
+MD = FINAL / "Group24_final_report.md"
+OUT = FINAL / "Group24_final_report.docx"
 NAVY = RGBColor(0x0B, 0x3D, 0x91)
 
 

@@ -1,4 +1,4 @@
-"""Build GroupXX_final_presentation.pptx — ~16 slides for the 15-minute final
+"""Build Group24_final_presentation.pptx — 17 slides for the 15-minute final
 talk.  Mirrors the milestone deck style; pulls live numbers from results.json
 (via src.report_fill) and embeds the figures from final/figures/.
 

@@ -1,4 +1,4 @@
-"""Programmatically build GroupXX_final_notebook.ipynb and execute it so cell
+"""Programmatically build Group24_final_notebook.ipynb and execute it so cell
 outputs (EDA, official scores, figures, ablation tables, logs) are embedded —
 the rubric requires preserving output logs.
 
@@ -19,7 +19,7 @@ from pathlib import Path
 import nbformat as nbf
 
 FINAL = Path(__file__).resolve().parent
-OUT = FINAL / "GroupXX_final_notebook.ipynb"
+OUT = FINAL / "Group24_final_notebook.ipynb"
 
 nb = nbf.v4.new_notebook()
 cells: list = []
@@ -33,10 +33,10 @@ def code(src):
     cells.append(nbf.v4.new_code_cell(src))
 
 
-md(r"""# GroupXX — SemEval-2026 Task 5 · Final Notebook
+md(r"""# Group 24 — SemEval-2026 Task 5 · Final Notebook
 ### Rating Plausibility of Word Senses in Ambiguous Sentences through Narrative Understanding
 
-**Members:** Member 1 · Member 2 · Member 3  ·  **Date:** 18 May 2026
+**Members:** Taylan İrak · Teammate 2 (name) · Teammate 3 (name)  ·  **Date:** 18 May 2026
 
 This notebook is the narrated, runnable version of our final system. It:
 

@@ -9,10 +9,10 @@
 %  HOW TO USE
 %  1. New Overleaf project -> upload THIS .tex AND the whole figures/ folder
 %     (fig1..fig10 .png) next to it. Compiler: pdfLaTeX.
-%  2. Fill the \GROUP / \MEMBER* lines.
-%  3. Update the ONE "RUN NUMBERS" block below from final/results.json after
-%     the final run (every metric in the body is a macro -> nothing else to
-%     touch). Defaults are the REAL canonical A100 run.
+%  2. ONLY edit needed: \MEMBERB / \MEMBERC (teammate names). Group=24 and
+%     all metrics are already filled from the canonical A100 run.
+%  3. (Optional) if you re-run, refresh the "RUN NUMBERS" block from
+%     final/results.json — every metric in the body is a macro.
 % =====================================================================
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -33,10 +33,12 @@
 \setlist{nosep,leftmargin=1.2em}
 
 % --- identity --------------------------------------------------------
-\newcommand{\GROUP}{<<XX>>}
-\newcommand{\MEMBERA}{<<Member 1>>}
-\newcommand{\MEMBERB}{<<Member 2>>}
-\newcommand{\MEMBERC}{<<Member 3>>}
+%  Only \MEMBERB / \MEMBERC need a human: put your teammates' real names
+%  (or delete the two extra contribution bullets if you are a smaller team).
+\newcommand{\GROUP}{24}
+\newcommand{\MEMBERA}{Taylan İrak}
+\newcommand{\MEMBERB}{Teammate 2 (name)}
+\newcommand{\MEMBERC}{Teammate 3 (name)}
 
 % ======================  RUN NUMBERS  ================================
 %  All from final/results.json of the canonical A100 run. Update here only.
@@ -55,9 +57,9 @@
 \newcommand{\EnsVerdict}{Below OK}              % "OK" / "Good" / "Below OK"
 \newcommand{\Wa}{--}\newcommand{\Wb}{--}\newcommand{\Wc}{--} % ensemble.weights
 % ---- classification view (results.json -> "classification") ---------
-\newcommand{\MacroF}{<<macro\_f1>>}
-\newcommand{\MacroP}{<<macro\_precision>>}
-\newcommand{\MacroR}{<<macro\_recall>>}
+\newcommand{\MacroF}{0.297}
+\newcommand{\MacroP}{0.400}
+\newcommand{\MacroR}{0.310}
 % ---- ablations ------------------------------------------------------
 \newcommand{\AblIntRho}{+0.558}\newcommand{\AblContRho}{+0.588}
 \newcommand{\DropWorst}{the Likert-distribution head (C)} % biggest drop-one loss
@@ -247,8 +249,9 @@ Ensemble (rounded int)                    & \EnsIntAcc & \EnsIntRho \\
 \end{table}
 
 \noindent\textbf{Verdict vs.\ rubric.} Component~B clears the \emph{OK} bar
-($\ge0.70/\ge0.60$); the calibrated ensemble is \EnsVerdict{} (tuned weights
-A~\Wa{} / B~\Wb{} / C~\Wc{}). \textbf{Classification view:} confusion matrix
+($\ge0.70/\ge0.60$); the calibrated ensemble is \EnsVerdict{} (weights chosen
+on the hold-out under the no-worse-than-best-single guard).
+\textbf{Classification view:} confusion matrix
 Fig.~\ref{fig:cm}, per-class F1 Fig.~\ref{fig:f1}; \textbf{macro-F1~=~\MacroF,
 macro-precision~=~\MacroP, macro-recall~=~\MacroR}; one-vs-rest
 \textbf{precision--recall curves} Fig.~\ref{fig:prc} and macro PR

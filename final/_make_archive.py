@@ -2,7 +2,7 @@
 
 The project description asks for the report, slides and code compressed into a
 single file. This collects the deliverables + everything needed to run the code
-into ``final/GroupXX_final_submission.zip`` and prints a manifest. Heavy / regen
+into ``final/Group24_final_submission.zip`` and prints a manifest. Heavy / regen
 artifacts (HF cache, scratch files) are excluded.
 """
 from __future__ import annotations
@@ -12,15 +12,18 @@ from pathlib import Path
 
 FINAL = Path(__file__).resolve().parent
 REPO = FINAL.parent
-ZIP = FINAL / "GroupXX_final_submission.zip"
+ZIP = FINAL / "Group24_final_submission.zip"
 
-# Deliverables (graded artifacts).
+# Deliverables (graded artifacts) — the spec's three named items:
+# Group24_final_report (.tex source + .pdf/.docx/.md), Group24_final_presentation,
+# Group24_final_code (notebook + src + run files, added via CODE_GLOBS below).
 DELIVERABLES = [
-    "GroupXX_final_report.md",
-    "GroupXX_final_report.pdf",
-    "GroupXX_final_report.docx",
+    "Group24_final_report.tex",
+    "Group24_final_report.pdf",
+    "Group24_final_report.docx",
+    "Group24_final_report.md",
     "Group24_final_presentation.pptx",
-    "GroupXX_final_notebook.ipynb",
+    "Group24_final_notebook.ipynb",
     "README.md",
     "RUN_ON_GPU.md",
     "requirements_final.txt",

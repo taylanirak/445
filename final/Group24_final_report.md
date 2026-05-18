@@ -1,7 +1,7 @@
 ---
 title: "SemEval-2026 Task 5 — Final Report"
 subtitle: "Rating Plausibility of Word Senses in Ambiguous Sentences through Narrative Understanding"
-author: "GroupXX — Member 1, Member 2, Member 3"
+author: "Group 24 — Taylan İrak, Teammate 2 (name), Teammate 3 (name)"
 date: "18 May 2026"
 geometry: margin=1in
 fontsize: 11pt
@@ -9,7 +9,7 @@ fontsize: 11pt
 
 <!--
   NOTE FOR THE TEAM (delete before submission):
-  * Replace GroupXX / Member 1-3 with the real group number and names.
+  * Group 24 + Taylan İrak filled; set the two `Teammate 2/3 (name)` only.
   * All numeric results are injected from final/results.json by _build_pdf.py /
     _build_docx.py at build time (tokens like {{ENS_ACC}}), so the report always
     matches the run that produced results.json.  Re-run final/src/run_all.py on
@@ -256,13 +256,13 @@ lexical systems, and is fully reproducible from `final/src/run_all.py`.
 Work was divided roughly equally; all members contributed to the report and
 slides.
 
-* **Member 1** — Component A (NLI scorer, hypothesis templates, calibration),
-  related-work survey, Results §4 and ablation analysis.
-* **Member 2** — Component B (gloss-informed regressor, training loop,
-  hold-out early stopping, seed averaging), data pipeline & homonym-disjoint
-  split, Methodology §3.
-* **Member 3** — Component C (novel Likert-distribution head, CORN ablation,
-  uncertainty gate), ensemble & calibration, figures, notebook and
+* **Taylan İrak** — Component A (NLI scorer, hypothesis templates,
+  calibration), related-work survey, Results §4 and ablation analysis.
+* **Teammate 2 (name)** — Component B (gloss-informed regressor, training
+  loop, hold-out early stopping, seed averaging), data pipeline &
+  homonym-disjoint split, Methodology §3.
+* **Teammate 3 (name)** — Component C (novel Likert-distribution head, CORN
+  ablation, uncertainty gate), ensemble & calibration, figures, notebook and
   reproducibility harness.
 
 ---

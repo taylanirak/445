@@ -1,6 +1,6 @@
 """Inject live numbers from ``final/results.json`` into the report source.
 
-The report (``GroupXX_final_report.md``) is written by the team with ``{{TOKEN}}``
+The report (``Group24_final_report.md``) is written by the team with ``{{TOKEN}}``
 placeholders for every metric.  This module turns ``results.json`` into the
 token→string map and substitutes it, so the PDF / DOCX / notebook always show
 the numbers from the run that actually produced ``results.json`` (CPU now, the
