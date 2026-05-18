@@ -35,9 +35,12 @@ from dataclasses import dataclass
 import numpy as np
 
 from .encoder_reg import (
+    LAMBDA_RANK,
     PairDataset,
     TrainConfig,
+    _batch_pearson,
     amp_tools,
+    build_llrd_groups,
     make_loaders,
     pick_device,
     set_all_seeds,
@@ -85,7 +88,11 @@ class _DistHead:
             attention_mask=batch["attention_mask"],
             token_type_ids=batch.get("token_type_ids"),
         )
-        return self.head(out.last_hidden_state[:, 0])
+        # Attention-masked mean pooling (shared rationale with Component B).
+        hidden = out.last_hidden_state
+        mask = batch["attention_mask"].unsqueeze(-1).to(hidden.dtype)
+        pooled = (hidden * mask).sum(1) / mask.sum(1).clamp_min(1e-6)
+        return self.head(pooled)
 
 
 def _corn_targets(avgs: np.ndarray) -> np.ndarray:
@@ -122,8 +129,15 @@ def _train_one_seed(cfg: TrainConfig, oc: ObjectiveConfig, data, seed, log_prefi
 
     model = _DistHead(cfg.model_name, oc.objective)
     model.module.to(device)
-    optim = torch.optim.AdamW(
-        model.module.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay
+    groups, used_llrd = build_llrd_groups(
+        model.module, cfg.lr, cfg.weight_decay
+    )
+    optim = torch.optim.AdamW(groups)
+    print(
+        f"  {log_prefix}[{oc.objective}] seed={seed} "
+        f"LLRD={'on' if used_llrd else 'flat-LR fallback'} "
+        f"({len(groups)} param groups)",
+        flush=True,
     )
     steps = len(dl_fit) * cfg.epochs
     sched = get_linear_schedule_with_warmup(
@@ -178,6 +192,11 @@ def _train_one_seed(cfg: TrainConfig, oc: ObjectiveConfig, data, seed, log_prefi
                     ev = (p * likert).sum(-1)
                     avg_t = (t * likert).sum(-1)
                     loss = kl + oc.mse_lambda * F.mse_loss(ev, avg_t)
+                    # Rank-alignment on the expected value vs. the mean rating
+                    # (same Spearman-surrogate rationale as Component B). Not
+                    # applied to the CORN branch so the ordinal ablation stays
+                    # an uncontaminated comparison.
+                    loss = loss + LAMBDA_RANK * (1.0 - _batch_pearson(ev, avg_t))
                 else:  # CORN: independent rank-binary BCE
                     loss = F.binary_cross_entropy_with_logits(lg, t)
             scaler.scale(loss).backward()

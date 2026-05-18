@@ -59,10 +59,18 @@ import hashlib  # noqa: E402
 
 CACHE = FINAL / ".cache"
 
+# Bump this whenever the *training / model / loss code* changes (not just
+# config). _run_sig hashes config only; without this constant a code change with
+# an unchanged config would silently reload the stale <sig>_{A,B,C}.npz and the
+# new code would never run. Folding CODE_VERSION into the signature guarantees a
+# re-run actually exercises the updated components.
+CODE_VERSION = "2026-05-18-a"
+
 
 def _run_sig(rt: dict, nli_model: str, n_tmpl: int) -> str:
-    raw = (f"{rt['backbone']}|{rt['max_len']}|{rt['epochs']}|{rt['seeds']}|"
-           f"{rt['grad_accum']}|{rt['subsample']}|{nli_model}|{n_tmpl}")
+    raw = (f"{CODE_VERSION}|{rt['backbone']}|{rt['max_len']}|{rt['epochs']}|"
+           f"{rt['seeds']}|{rt['grad_accum']}|{rt['subsample']}|{nli_model}|"
+           f"{n_tmpl}")
     return hashlib.md5(raw.encode()).hexdigest()[:10]
 
 

@@ -34,16 +34,58 @@ def _weight_grid(step: float = 0.1):
             yield (float(wa), float(wb), max(0.0, wc))
 
 
-def search_weights(holdout_preds: dict, holdout_avg) -> tuple[float, float, float]:
-    """Pick the convex ``(w_A,w_B,w_C)`` maximising hold-out Spearman."""
+def search_weights(
+    holdout_preds: dict, holdout_avg, margin: float = 0.01
+) -> tuple[float, float, float]:
+    """Pick a convex ``(w_A,w_B,w_C)`` that robustly maximises hold-out Spearman.
+
+    The hold-out is small (~276 homonym-disjoint rows) and the 66-point convex
+    grid overfits it easily — empirically the grid-optimal blend has been
+    *worse* on dev than the single best component. Two guards:
+
+    1. **No-worse-than-best-single.** Compute each component's solo hold-out ρ;
+       only trust a blend if it beats the best single component by ``margin``,
+       otherwise fall back to that component's one-hot weight.
+    2. **Top-K stabilisation.** Average the 5 best grid weight vectors instead
+       of taking the single argmax; if that averaged blend does not itself
+       clear the margin, fall back to the best single component as well.
+    """
     a, b, c = holdout_preds["A"], holdout_preds["B"], holdout_preds["C"]
+    singles = {
+        (1.0, 0.0, 0.0): spearman(a, holdout_avg),
+        (0.0, 1.0, 0.0): spearman(b, holdout_avg),
+        (0.0, 0.0, 1.0): spearman(c, holdout_avg),
+    }
+    best_single_w = max(singles, key=singles.get)
+    best_single_rho = singles[best_single_w]
+
+    scored = []
     best_w, best_rho = (1 / 3, 1 / 3, 1 / 3), -2.0
     for wa, wb, wc in _weight_grid():
-        blend = wa * a + wb * b + wc * c
-        rho = spearman(blend, holdout_avg)
+        rho = spearman(wa * a + wb * b + wc * c, holdout_avg)
+        scored.append(((wa, wb, wc), rho))
         if rho > best_rho:
             best_rho, best_w = rho, (wa, wb, wc)
-    return best_w
+
+    # Guard 1: the best blend must clear the best single component.
+    if best_rho < best_single_rho + margin:
+        return best_single_w
+
+    # Guard 2: stabilise by averaging the top-5 weight vectors, but only keep it
+    # if it still clears the margin (averaging weights does not preserve the
+    # maximisation); otherwise fall back to the best single component.
+    scored.sort(key=lambda x: x[1], reverse=True)
+    topk = np.array([w for w, _ in scored[:5]], dtype=float)
+    avg_w = topk.mean(axis=0)
+    avg_w = avg_w / avg_w.sum()
+    avg_rho = spearman(
+        avg_w[0] * a + avg_w[1] * b + avg_w[2] * c, holdout_avg
+    )
+    if avg_rho >= best_single_rho + margin:
+        return (float(avg_w[0]), float(avg_w[1]), float(avg_w[2]))
+    if best_rho >= best_single_rho + margin:
+        return best_w
+    return best_single_w
 
 
 def uncertainty_gate(preds: dict, var_C, w):

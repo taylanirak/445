@@ -102,29 +102,44 @@ The story is the **premise**; the candidate sense becomes a **hypothesis**
 paraphrase). We read the model's entailment/contradiction probabilities and
 take `s = P(entailment) − P(contradiction)`, then map `s` to [1,5] with an
 **isotonic** calibrator fit on the hold-out (a linear calibrator is kept for the
-ablation). Checkpoint: `facebook/bart-large-mnli` on GPU, the lighter
-`MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli` as the CPU fallback. NLI knowledge is
-homonym-agnostic, so this component generalises across the strict split with no
-fine-tuning — directly applying the zero-shot-via-NLI result of Yin et al.
+ablation). Checkpoint: `MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`
+on GPU — a DeBERTa-v3-large fine-tuned on five entailment corpora
+(MNLI/FEVER/ANLI/LING/WANLI), substantially more sense-sensitive than a
+generic MNLI head — with the lighter
+`MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli` as the CPU fallback. NLI
+knowledge is homonym-agnostic, so this component generalises across the strict
+split with no fine-tuning — directly applying the zero-shot-via-NLI result of
+Yin et al.
 
 ## 3.3 Component B — fine-tuned gloss-informed regressor
 
 A transformer encoder (`microsoft/deberta-v3-large` on GPU; `roberta-base`
-fallback) is fine-tuned with a linear head on the pooled `[CLS]` and MSE against
-the human average. The input is a gloss-informed pair: segment A is the target
+fallback) is fine-tuned with a linear head on an **attention-masked
+mean-pooled** encoder representation (rather than the raw first token, which
+DeBERTa-v3/RoBERTa do not pre-train as a sentence summary — Reimers &
+Gurevych). The input is a gloss-informed pair: segment A is the target
 sentence, segment B is `homonym: gloss [example] example_sentence [story]
 precontext ending`, placing the gloss next to the lexical anchor (Blevins &
 Zettlemoyer). The target is z-scored on the fit fold and de-standardised at
-inference. Training: lr 1e-5 (2e-5 for the RoBERTa fallback), batch 16, 4
-epochs, 6 % warm-up, weight decay 0.01, gradient clipping 1.0, fp16; **early
-stopping on hold-out Spearman**; three seeds {13,42,123} averaged.
+inference. The training loss is `MSE + 0.1·(1 − ρ̂)`, where `ρ̂` is a
+differentiable batch-level Pearson correlation between predictions and targets
+— a smooth surrogate for the Spearman objective the system is graded on (one
+cannot backpropagate through hard ranks). **Aligning the training loss with the
+ranking metric is our own methodological contribution**, applied to both
+Components B and C. Training: base lr 1e-5 (2e-5 for the RoBERTa fallback) with
+**layer-wise learning-rate decay (0.95)** for stable large-encoder
+fine-tuning, batch 16, 4 epochs, 6 % warm-up, weight decay 0.01 (excluded for
+bias/LayerNorm), gradient clipping 1.0, fp16/bf16; **early stopping on hold-out
+Spearman**; three seeds {13,42,123} averaged.
 
 ## 3.4 Component C — novel Likert-distribution head
 
 Instead of a scalar, Component C predicts the **full five-way vote
 distribution** `p = softmax(Wh)` and is trained with
-`KL(q ‖ p) + 0.3·MSE(Σ k·p_k, average)`, where `q` is the label-smoothed
-empirical annotator distribution. The prediction is the **expected value
+`KL(q ‖ p) + 0.3·MSE(Σ k·p_k, average) + 0.1·(1 − ρ̂)`, where `q` is the
+label-smoothed empirical annotator distribution and the last term is the same
+batch-Pearson rank-alignment surrogate used in Component B (on the expected
+value vs. the mean rating). The prediction is the **expected value
 `Σ k·p_k`**, which is intrinsically continuous in [1,5] (no separate
 calibration), and the **predicted variance `Σ p_k (k−E)²`** is a free
 per-sample uncertainty that we reuse to gate the ensemble. This is our genuine
@@ -137,8 +152,12 @@ back to the milestone's ordinal-threshold experiment.
 
 The three continuous component outputs are blended with convex weights chosen by
 grid search to maximise **hold-out Spearman**, followed by a single isotonic
-calibration on the hold-out and clipping to [1,5]. Tuned weights:
-**A {{W_A}} / B {{W_B}} / C {{W_C}}**. The submission is the continuous
+calibration on the hold-out and clipping to [1,5]. Because the homonym-disjoint
+hold-out is small (~276 rows) and the convex grid overfits it, the search is
+guarded: the blend is only adopted if it beats the best *single* component's
+hold-out ρ by a margin, and the top-5 weight vectors are averaged for
+stability; otherwise the system falls back to the strongest single component.
+Tuned weights: **A {{W_A}} / B {{W_B}} / C {{W_C}}**. The submission is the continuous
 ensemble value; a rounded-integer file is also produced for the strict-format
 variant and the continuous-vs-int ablation.
 

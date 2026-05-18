@@ -78,6 +78,85 @@ def amp_tools(use_amp: bool):
     return autocast, torch.amp.GradScaler("cuda", enabled=not bf16)
 
 
+# --------------------------------------------------------------------------- #
+# Rank-alignment auxiliary loss (shared by Components B and C)
+# --------------------------------------------------------------------------- #
+# The official metric is Spearman ρ (a *ranking* metric), but the supervised
+# objectives (B: MSE, C: KL+MSE) only optimise pointwise fit. We add a small
+# batch-level Pearson term ``1 - corr(pred, target)`` — a smooth, differentiable
+# surrogate for Spearman (one cannot backprop through hard ranks) — so training
+# is aligned with evaluation. This is our own methodological contribution; the
+# weight is deliberately small because a per-batch (bs≈16) correlation is a
+# noisy estimate of the dataset-level ρ and a large weight destabilises the
+# well-conditioned MSE/KL term.
+LAMBDA_RANK = 0.1
+
+
+def _batch_pearson(pred, target):
+    """Differentiable batch Pearson correlation, computed in fp32.
+
+    Returns a scalar in [-1, 1], or 0.0 when the batch is degenerate
+    (``< 2`` elements, or a constant pred/target ⇒ zero variance). The fp32
+    cast and the two guards make this safe under bf16/fp16 autocast and for the
+    size-1 final batch that ``make_loaders`` (no ``drop_last``) can yield —
+    without them a single NaN here would poison the rest of the run.
+    """
+    p = pred.float().reshape(-1)
+    t = target.float().reshape(-1)
+    if p.numel() < 2:
+        return p.new_tensor(0.0)
+    p = p - p.mean()
+    t = t - t.mean()
+    denom = p.norm() * t.norm()
+    if denom < 1e-8:
+        return p.new_tensor(0.0)
+    return (p * t).sum() / denom
+
+
+def build_llrd_groups(module, base_lr, weight_decay, decay: float = 0.95):
+    """AdamW parameter groups with layer-wise learning-rate decay.
+
+    Names are introspected by string prefix (``\\.layer\\.<i>\\.``) rather than
+    by class/attribute, so it works through the ``ModuleDict({"b": backbone,
+    "h": head})`` wrapper and across encoder families. The top encoder layer and
+    the head keep ``base_lr``; each lower layer is multiplied by ``decay`` and
+    embeddings / relative-position params sit lowest. Bias and LayerNorm get no
+    weight decay. If no transformer layers can be identified the function
+    degrades to a single flat-LR group — i.e. exactly the previous behaviour —
+    so it can never crash an unattended run. Returns ``(groups, used_llrd)``.
+    """
+    import re
+
+    named = [(n, p) for n, p in module.named_parameters() if p.requires_grad]
+    layer_re = re.compile(r"\.layer\.(\d+)\.")
+    layer_ids = {
+        int(m.group(1)) for n, _ in named for m in [layer_re.search(n)] if m
+    }
+    if not layer_ids:  # unknown naming → safe flat-LR fallback
+        return (
+            [{"params": [p for _, p in named], "lr": base_lr,
+              "weight_decay": weight_decay}],
+            False,
+        )
+    top = max(layer_ids)
+    groups = []
+    for n, p in named:
+        if n.startswith("h."):  # task head
+            lr = base_lr
+        else:
+            m = layer_re.search(n)
+            if m:
+                lr = base_lr * (decay ** (top - int(m.group(1))))
+            else:  # embeddings / rel_embeddings / final norm → lowest lr
+                lr = base_lr * (decay ** (top + 1))
+        no_decay = any(
+            t in n for t in ("bias", "LayerNorm.weight", "LayerNorm.bias")
+        )
+        groups.append({"params": [p], "lr": lr,
+                       "weight_decay": 0.0 if no_decay else weight_decay})
+    return groups, True
+
+
 @dataclass
 class TrainConfig:
     """All knobs for a single training run.
@@ -181,14 +260,19 @@ class _Regressor:
         self.module.float()
 
     def forward(self, **batch):
-        # First token ([CLS]/<s>) representation as the pooled summary.
         out = self.backbone(
             input_ids=batch["input_ids"],
             attention_mask=batch["attention_mask"],
             token_type_ids=batch.get("token_type_ids"),
         )
-        cls = out.last_hidden_state[:, 0]
-        return self.head(cls).squeeze(-1)
+        # Attention-masked mean pooling. DeBERTa-v3 (and RoBERTa) do not
+        # pre-train the first token as a sentence summary, so mean-pooling over
+        # the real tokens is a more robust regression representation (Reimers &
+        # Gurevych, EMNLP 2019) and reduces seed variance vs. raw [CLS].
+        hidden = out.last_hidden_state
+        mask = batch["attention_mask"].unsqueeze(-1).to(hidden.dtype)
+        pooled = (hidden * mask).sum(1) / mask.sum(1).clamp_min(1e-6)
+        return self.head(pooled).squeeze(-1)
 
 
 def _train_one_seed(cfg: TrainConfig, data, seed: int, log_prefix: str):
@@ -224,8 +308,15 @@ def _train_one_seed(cfg: TrainConfig, data, seed: int, log_prefix: str):
 
     model = _Regressor(cfg.model_name)
     model.module.to(device)
-    optim = torch.optim.AdamW(
-        model.module.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay
+    groups, used_llrd = build_llrd_groups(
+        model.module, cfg.lr, cfg.weight_decay
+    )
+    optim = torch.optim.AdamW(groups)
+    print(
+        f"  {log_prefix} seed={seed} "
+        f"LLRD={'on' if used_llrd else 'flat-LR fallback'} "
+        f"({len(groups)} param groups)",
+        flush=True,
     )
     steps = (len(dl_fit) // cfg.grad_accum) * cfg.epochs
     sched = get_linear_schedule_with_warmup(
@@ -257,7 +348,11 @@ def _train_one_seed(cfg: TrainConfig, data, seed: int, log_prefix: str):
             batch = {k: v.to(device) for k, v in batch.items()}
             with autocast():
                 pred = model.forward(**batch)
-                loss = loss_fn(pred, tgt) / cfg.grad_accum
+                # Assemble the composite loss BEFORE the grad_accum division so
+                # the MSE and rank terms stay correctly proportioned.
+                base = loss_fn(pred, tgt)
+                rank = 1.0 - _batch_pearson(pred, tgt)
+                loss = (base + LAMBDA_RANK * rank) / cfg.grad_accum
             scaler.scale(loss).backward()
             running += loss.item() * cfg.grad_accum
             if (step + 1) % cfg.grad_accum == 0:

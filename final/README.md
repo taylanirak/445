@@ -48,9 +48,11 @@ python -m pip install -r final/requirements_final.txt
 #    OFFICIAL scoring.py. GPU is auto-detected.
 python final/src/run_all.py
 #    Runtime modes (auto):
-#      GPU            → DeBERTa-v3-large, 3 seeds, 4 epochs  (canonical; ~2–3.5 h)
+#      GPU            → DeBERTa-v3-large + DeBERTa-v3-large-MNLI, 3 seeds,
+#                        4 epochs, mean-pool + rank-aligned loss + LLRD
+#                        (canonical; ~2–3.5 h)
 #      FAST=1 (GPU)   → RoBERTa-base, 2 epochs               (~45 min)
-#      no GPU         → RoBERTa-base + distilbert-MNLI, subsampled (weaker; CPU)
+#      no GPU         → RoBERTa-base + DeBERTa-v3-base-MNLI, full data (weaker; CPU)
 #      SKIP_HEAVY=1   → lexical baselines only (structural CI, no downloads)
 
 # 2. Build EVERYTHING from those artifacts in one command:
